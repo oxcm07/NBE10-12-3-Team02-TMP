@@ -49,7 +49,7 @@ public class WaitingQueueManager {
         activeSchedules.add(scheduleId.toString());
 
         // Lua Script: 이미 등록된 경우 기존 순번 반환, 신규면 INCR 후 ZADD
-        RScript script = redissonClient.getScript();
+        RScript script = redissonClient.getScript(org.redisson.client.codec.StringCodec.INSTANCE);
         Long rank = script.eval(
                 RScript.Mode.READ_WRITE,
                 """
@@ -64,7 +64,7 @@ public class WaitingQueueManager {
                 end
                 return rank + 1
                 """,
-                RScript.ReturnType.INTEGER,
+                RScript.ReturnType.LONG,
                 Arrays.asList(waitKey, seqKey),
                 user
         );
@@ -131,11 +131,11 @@ public class WaitingQueueManager {
         long now = System.currentTimeMillis();
         long expiredAt = now + ttl.toMillis();
 
-        RScript script = redissonClient.getScript();
+        RScript script = redissonClient.getScript(org.redisson.client.codec.StringCodec.INSTANCE);
         List<String> userIds = script.eval(
                 RScript.Mode.READ_WRITE,
                 """
-                redis.call('ZREMRANGEBYSCORE', KEYS[2], '-inf', ARGV[3])
+                redis.call('ZREMRANGEBYSCORE', KEYS[2], '-inf', tonumber(ARGV[3]))
                 local activeCount = redis.call('ZCARD', KEYS[2])
                 local availableSlots = tonumber(ARGV[1]) - activeCount
                 if availableSlots <= 0 then
@@ -148,11 +148,11 @@ public class WaitingQueueManager {
                 end
                 redis.call('ZREM', KEYS[1], unpack(users))
                 for _, u in ipairs(users) do
-                  redis.call('ZADD', KEYS[2], ARGV[4], u)
+                  redis.call('ZADD', KEYS[2], tonumber(ARGV[4]), u)
                 end
                 return users
                 """,
-                RScript.ReturnType.MULTI,
+                RScript.ReturnType.LIST,
                 Arrays.asList(waitKey, activeKey),
                 String.valueOf(capacity),
                 String.valueOf(batchSize),

@@ -44,8 +44,8 @@ dependencies {
     implementation("io.jsonwebtoken:jjwt-api:0.13.0")
     runtimeOnly("io.jsonwebtoken:jjwt-impl:0.13.0")
     runtimeOnly("io.jsonwebtoken:jjwt-jackson:0.13.0")
-    // Redisson (Sentinel, Delayed Queue, RScript 통합 클라이언트)
-    implementation("org.redisson:redisson-spring-boot-starter:3.40.0")
+    // Redisson (Sentinel, Delayed Queue, RScript 통합 클라이언트) - Spring Boot 4.0 호환 버전
+    implementation("org.redisson:redisson-spring-boot-starter:4.6.1")
     // OAuth2
     implementation("org.springframework.boot:spring-boot-starter-oauth2-client")
     testImplementation("org.springframework.boot:spring-boot-starter-test")

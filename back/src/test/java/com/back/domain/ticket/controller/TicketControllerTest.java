@@ -17,13 +17,15 @@ import com.back.global.security.SecurityUser;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+import org.redisson.api.RBlockingQueue;
+import org.redisson.api.RBucket;
+import org.redisson.api.RDelayedQueue;
+import org.redisson.api.RMap;
+import org.redisson.api.RScoredSortedSet;
+import org.redisson.api.RedissonClient;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
-import org.springframework.data.redis.core.HashOperations;
-import org.springframework.data.redis.core.StringRedisTemplate;
-import org.springframework.data.redis.core.ValueOperations;
-import org.springframework.data.redis.core.ZSetOperations;
 import org.springframework.http.MediaType;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
@@ -31,13 +33,12 @@ import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
-import java.util.List;
 
 import static com.back.domain.schedule.entity.SeatStatus.AVAILABLE;
+import static com.back.domain.schedule.entity.SeatStatus.HOLD;
 import static com.back.domain.schedule.entity.SeatStatus.SOLD_OUT;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.*;
-import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.user;
@@ -67,7 +68,7 @@ class TicketControllerTest {
     private ScheduleSeat seat;
 
     @MockitoBean
-    private StringRedisTemplate redisTemplate;
+    private RedissonClient redissonClient;
 
     @Autowired
     TicketControllerTest(
@@ -89,54 +90,67 @@ class TicketControllerTest {
     }
 
     @BeforeEach
+    @SuppressWarnings({"unchecked", "rawtypes"})
     void setUp() {
         user = saveUser();
         securityUser = new SecurityUser(user.getUserId(), user.getName());
-        ValueOperations<String, String> valueOperations = mock(ValueOperations.class);
-        when(redisTemplate.opsForValue()).thenReturn(valueOperations);
-        when(valueOperations.get(anyString())).thenReturn("test-queue-token");
+
+        // QueueInterceptor: 진입열 ZSET score 반환 (유효한 세션)
+        RScoredSortedSet<String> activeSet = mock(RScoredSortedSet.class);
+        org.mockito.Mockito.doReturn(activeSet).when(redissonClient).getScoredSortedSet(anyString());
+        when(activeSet.getScore(anyString()))
+                .thenReturn((double) (System.currentTimeMillis() + 600000));
+
+        // QueueInterceptor: 토큰 조회
+        RBucket<String> tokenBucket = mock(RBucket.class);
+        org.mockito.Mockito.doReturn(tokenBucket).when(redissonClient).getBucket(anyString());
+        when(tokenBucket.get()).thenReturn("test-queue-token");
+
+        // TicketService.validateSeatHold: RMap 기본값 (setUp에서 덮어쓀)
+        RMap<String, String> hashMap = mock(RMap.class);
+        org.mockito.Mockito.doReturn(hashMap).when(redissonClient).getMap(anyString());
+        when(hashMap.get("userId")).thenReturn(user.getUserId().toString());
+        when(hashMap.get("occupyToken")).thenReturn("test-token");
+
+        // TicketService.cancelDelayedQueueMessage: Delayed Queue mock
+        RBlockingQueue<String> blockingQueue = mock(RBlockingQueue.class);
+        RDelayedQueue<String> delayedQueue = mock(RDelayedQueue.class);
+        org.mockito.Mockito.doReturn(blockingQueue).when(redissonClient).getBlockingQueue(anyString());
+        org.mockito.Mockito.doReturn(delayedQueue).when(redissonClient).getDelayedQueue(any());
+
         concert = concertRepository.save(Concert.create(
-                "싸이 콘서트",
-                "설명",
-                LocalDateTime.now(),
-                LocalDateTime.now().plusDays(1),
-                "poster.jpg"
-        ));
+                "싸이 콘서트", "설명", LocalDateTime.now(), LocalDateTime.now().plusDays(1), "poster.jpg"));
         Venue venue = venueRepository.save(Venue.create("공연장", "서울", 15000L));
         schedule = scheduleRepository.save(Schedule.create(concert, venue, LocalDateTime.now().plusHours(12), 1));
 
-        seat = scheduleSeatRepository.save(ScheduleSeat.create(schedule, "VIP", "A-1", 150000, AVAILABLE));
-        scheduleSeatRepository.save(ScheduleSeat.create(schedule, "VIP", "A-2", 150000, AVAILABLE));
-        scheduleSeatRepository.save(ScheduleSeat.create(schedule, "VIP", "A-3", 150000, AVAILABLE));
-        scheduleSeatRepository.save(ScheduleSeat.create(schedule, "VIP", "A-4", 150000, AVAILABLE));
-
-        @SuppressWarnings("unchecked")
-        HashOperations<String, Object, Object> hashOperations = mock(HashOperations.class);
-        when(redisTemplate.opsForHash()).thenReturn(hashOperations);
-
-        when(hashOperations.multiGet(anyString(), anyList()))
-                .thenReturn(List.of(user.getUserId().toString(), "test-token"));
-
-        @SuppressWarnings("unchecked")
-        ZSetOperations<String, String> zSetOperations = mock(ZSetOperations.class);
-        when(redisTemplate.opsForZSet()).thenReturn(zSetOperations);
-        when(zSetOperations.score(anyString(), anyString()))
-                .thenReturn((double) (System.currentTimeMillis() + 600000));
+        // HOLD 상태로 생성 (결제 검증이 HOLD 상태를 요구함)
+        seat = scheduleSeatRepository.save(ScheduleSeat.create(schedule, "VIP", "A-1", 150000, HOLD));
+        scheduleSeatRepository.save(ScheduleSeat.create(schedule, "VIP", "A-2", 150000, HOLD));
+        scheduleSeatRepository.save(ScheduleSeat.create(schedule, "VIP", "A-3", 150000, HOLD));
+        scheduleSeatRepository.save(ScheduleSeat.create(schedule, "VIP", "A-4", 150000, HOLD));
     }
 
     @Test
     @DisplayName("티켓 2매 생성 성공")
+    @SuppressWarnings("unchecked")
     void createTicket() throws Exception {
-        when(redisTemplate.opsForHash().multiGet(anyString(), anyList()))
-                .thenAnswer(invocation -> {
-                    String key = invocation.getArgument(0);
-                    if (key.endsWith("A-1")) {
-                        return List.of(user.getUserId().toString(), "token-1");
-                    } else if (key.endsWith("A-2")) {
-                        return List.of(user.getUserId().toString(), "token-2");
-                    }
-                    return List.of(user.getUserId().toString(), "test-token");
-                });
+        // A-1, A-2 에 대한 토큰 반환
+        RMap<String, String> hashMap = mock(RMap.class);
+        when(redissonClient.getMap(anyString())).thenAnswer(invocation -> {
+            String key = invocation.getArgument(0, String.class);
+            RMap<String, String> map = mock(RMap.class);
+            if (key.endsWith("A-1")) {
+                when(map.get("userId")).thenReturn(user.getUserId().toString());
+                when(map.get("occupyToken")).thenReturn("token-1");
+            } else if (key.endsWith("A-2")) {
+                when(map.get("userId")).thenReturn(user.getUserId().toString());
+                when(map.get("occupyToken")).thenReturn("token-2");
+            } else {
+                when(map.get("userId")).thenReturn(user.getUserId().toString());
+                when(map.get("occupyToken")).thenReturn("test-token");
+            }
+            return map;
+        });
 
         String requestBody = """
                 {
@@ -165,12 +179,10 @@ class TicketControllerTest {
                 .andExpect(jsonPath("$.msg").value("결제 및 티켓 생성 성공"))
                 .andExpect(jsonPath("$.data").isArray())
                 .andExpect(jsonPath("$.data.length()").value(2))
-
                 .andExpect(jsonPath("$.data[0].ticketNumber").isString())
                 .andExpect(jsonPath("$.data[0].urlPoster").value("poster.jpg"))
                 .andExpect(jsonPath("$.data[0].concertName").value("싸이 콘서트"))
                 .andExpect(jsonPath("$.data[0].seatNumber").value("A-1"))
-
                 .andExpect(jsonPath("$.data[1].ticketNumber").isString())
                 .andExpect(jsonPath("$.data[1].urlPoster").value("poster.jpg"))
                 .andExpect(jsonPath("$.data[1].concertName").value("싸이 콘서트"))
@@ -225,13 +237,6 @@ class TicketControllerTest {
 
     private User saveUser() {
         return userRepository.save(
-                User.create(
-                        "user1",
-                        "user1@test.com",
-                        "0000",
-                        "테스트 유저",
-                        LoginType.NORMAL
-                )
-        );
+                User.create("user1", "user1@test.com", "0000", "테스트 유저", LoginType.NORMAL));
     }
 }

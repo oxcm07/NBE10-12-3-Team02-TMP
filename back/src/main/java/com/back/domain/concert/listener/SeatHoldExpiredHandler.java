@@ -12,6 +12,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.redisson.api.RBlockingQueue;
 import org.redisson.api.RDelayedQueue;
 import org.redisson.api.RedissonClient;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
@@ -39,6 +40,7 @@ import java.util.concurrent.TimeUnit;
 @Slf4j
 @Component
 @RequiredArgsConstructor
+@ConditionalOnProperty(name = "seat.hold.handler.enabled", havingValue = "true", matchIfMissing = true)
 public class SeatHoldExpiredHandler {
 
     public static final String DELAYED_QUEUE_KEY = "seat:hold:expired:queue";
@@ -70,10 +72,13 @@ public class SeatHoldExpiredHandler {
     }
 
     private void listen() {
-        RBlockingQueue<String> blockingQueue = redissonClient.getBlockingQueue(DELAYED_QUEUE_KEY);
-
         while (running) {
             try {
+                RBlockingQueue<String> blockingQueue = redissonClient.getBlockingQueue(DELAYED_QUEUE_KEY);
+                if (blockingQueue == null) {
+                    Thread.sleep(2000);
+                    continue;
+                }
                 // 최대 2초 대기 후 null 반환 (running 체크 가능하도록)
                 String message = blockingQueue.poll(2, TimeUnit.SECONDS);
                 if (message != null) {

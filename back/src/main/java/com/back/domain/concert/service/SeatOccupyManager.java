@@ -71,16 +71,16 @@ public class SeatOccupyManager {
             if redis.call('EXISTS', KEYS[1]) == 1 then
               if redis.call('HGET', KEYS[1], 'userId') == ARGV[1] then
                 redis.call('HSET', KEYS[1], 'occupyToken', ARGV[2])
-                redis.call('EXPIRE', KEYS[1], ARGV[3])
-                redis.call('ZADD', KEYS[2], ARGV[5], ARGV[4])
+                redis.call('EXPIRE', KEYS[1], tonumber(ARGV[3]))
+                redis.call('ZADD', KEYS[2], tonumber(ARGV[5]), ARGV[4])
                 return 1
               else
                 return 0
               end
             else
               redis.call('HSET', KEYS[1], 'userId', ARGV[1], 'occupyToken', ARGV[2])
-              redis.call('EXPIRE', KEYS[1], ARGV[3])
-              redis.call('ZADD', KEYS[2], ARGV[5], ARGV[4])
+              redis.call('EXPIRE', KEYS[1], tonumber(ARGV[3]))
+              redis.call('ZADD', KEYS[2], tonumber(ARGV[5]), ARGV[4])
               return 1
             end
             """;
@@ -105,11 +105,11 @@ public class SeatOccupyManager {
         long now = System.currentTimeMillis();
         long expireAt = now + (OCCUPY_TTL_SECONDS * 1000);
 
-        // 1. Redis 원자적 선점 (Lua Script)
-        Long result = redissonClient.getScript().eval(
+        // 1. Redis 원자적 선점 (Lua Script - StringCodec으로 raw 값 전달)
+        Long result = redissonClient.getScript(org.redisson.client.codec.StringCodec.INSTANCE).eval(
                 RScript.Mode.READ_WRITE,
                 OCCUPY_SCRIPT,
-                RScript.ReturnType.INTEGER,
+                RScript.ReturnType.LONG,
                 Arrays.asList(redisKey, indexKey),
                 userId.toString(),
                 occupyToken,

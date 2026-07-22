@@ -54,7 +54,7 @@ public class RefreshTokenRepository {
         String newTokenKey = generateKey(RefreshTokenKeyType.TOKEN, userId, newJti);
         String indexKey = generateKey(RefreshTokenKeyType.INDEX, userId, null);
 
-        Long result = redissonClient.getScript().eval(
+        Long result = redissonClient.getScript(org.redisson.client.codec.StringCodec.INSTANCE).eval(
                 RScript.Mode.READ_WRITE,
                 """
                 local oldValue = redis.call('GET', KEYS[1])
@@ -71,7 +71,7 @@ public class RefreshTokenRepository {
                 redis.call('EXPIRE', KEYS[3], ARGV[3])
                 return 1
                 """,
-                RScript.ReturnType.INTEGER,
+                RScript.ReturnType.LONG,
                 Arrays.asList(oldTokenKey, newTokenKey, indexKey),
                 requestRefreshTokenHash,
                 newRefreshTokenHash,

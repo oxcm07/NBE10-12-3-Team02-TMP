@@ -4,6 +4,27 @@ spring:
     username: sa
     password:
     driver-class-name: org.h2.Driver
+  # Redisson standalone 설정 (테스트: RedisTestConfig가 RedissonClient를 제공하므로 이 설정은 무시됨)
+  # 하지만 Redisson AutoConfiguration이 RedisProperties를 로드하려 할 때 충돌 방지를 위해
+  # 기존 spring-boot-autoconfigure의 Redis AutoConfiguration을 명시적으로 제외
+  autoconfigure:
+    exclude:
+      - org.springframework.boot.autoconfigure.data.redis.RedisAutoConfiguration
+      - org.springframework.boot.autoconfigure.data.redis.RedisRepositoriesAutoConfiguration
+  # Redisson은 자체 config 방식으로 동작하므로 standalone dummy 설정
+  redis:
+    redisson:
+      config: |
+        singleServerConfig:
+          address: "redis://127.0.0.1:6379"
+        threads: 4
+        nettyThreads: 8
+        codec: !<org.redisson.codec.JsonJacksonCodec> {}
 custom:
   cors:
     allowed-origins: http://localhost:3000
+# 테스트 환경에서 백그라운드 Delayed Queue 핸들러 비활성화 (mock 충돌 방지)
+seat:
+  hold:
+    handler:
+      enabled: false

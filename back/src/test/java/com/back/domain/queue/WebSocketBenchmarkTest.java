@@ -12,6 +12,7 @@ import org.springframework.test.context.ActiveProfiles;
 
 @ActiveProfiles("test")
 @SpringBootTest
+@org.springframework.context.annotation.Import(com.back.global.RedisTestConfig.class)
 class WebSocketBenchmarkTest {
     @Autowired
     private SimpMessagingTemplate messagingTemplate;
