@@ -1,23 +1,14 @@
 package com.back.domain.concert.listener;
 
-import com.back.domain.concert.event.SeatExpiredEvent;
-import com.back.domain.concert.service.SeatOccupyManager;
-import com.back.domain.schedule.entity.ScheduleSeat;
-import com.back.domain.schedule.entity.SeatStatus;
-import com.back.domain.schedule.repository.ScheduleSeatRepository;
 import jakarta.annotation.PostConstruct;
 import jakarta.annotation.PreDestroy;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.redisson.api.RBlockingQueue;
-import org.redisson.api.RDelayedQueue;
 import org.redisson.api.RedissonClient;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
-import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Component;
-import org.springframework.transaction.annotation.Transactional;
 
-import java.util.Optional;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
@@ -25,17 +16,19 @@ import java.util.concurrent.TimeUnit;
 /**
  * Redisson Delayed Queue 기반 좌석 선점 만료 복구 핸들러.
  *
- * <p>TTL이 경과한 좌석 선점 메시지를 큐에서 꺼내 DB 좌석 상태를 {@code AVAILABLE}로 복구합니다.
- * 이후 SSE 브로드캐스트를 위해 {@link SeatExpiredEvent}를 발행합니다.
+ * <p>TTL이 경과한 좌석 선점 메시지를 큐에서 꺼내 {@link SeatHoldExpiredProcessor}에 위임합니다.
  *
  * <h2>흐름</h2>
  * <ol>
- *   <li>애플리케이션 시작 시 백그라운드 스레드에서 {@code RBlockingQueue.take()} 대기</li>
+ *   <li>애플리케이션 시작 시 백그라운드 스레드에서 {@code RBlockingQueue.poll()} 대기</li>
  *   <li>TTL 경과 → 메시지({@code "concertId:scheduleId:seatNumber"}) 수신</li>
- *   <li>DB에서 해당 좌석이 아직 {@code HOLD} 상태인 경우 {@code AVAILABLE}로 복구</li>
- *   <li>Redis Hash 및 ZSET 인덱스 정리</li>
- *   <li>SSE 이벤트 발행으로 실시간 좌석 상태 변경 클라이언트에 Push</li>
+ *   <li>{@link SeatHoldExpiredProcessor#processExpiredSeat}에 위임 (Spring 프록시를 통한 @Transactional 보장)</li>
  * </ol>
+ *
+ * <h2>트랜잭션 설계</h2>
+ * <p>이 클래스는 트랜잭션 처리를 직접 수행하지 않습니다.
+ * 모든 DB 작업은 {@link SeatHoldExpiredProcessor}를 통해 Spring AOP 프록시 하에서 수행됩니다.
+ * 이를 통해 self-invocation에 의한 {@code @Transactional} 무효화 문제를 방지합니다.
  */
 @Slf4j
 @Component
@@ -46,9 +39,7 @@ public class SeatHoldExpiredHandler {
     public static final String DELAYED_QUEUE_KEY = "seat:hold:expired:queue";
 
     private final RedissonClient redissonClient;
-    private final ScheduleSeatRepository scheduleSeatRepository;
-    private final SeatOccupyManager seatOccupyManager;
-    private final ApplicationEventPublisher eventPublisher;
+    private final SeatHoldExpiredProcessor seatHoldExpiredProcessor;
 
     private final ExecutorService executor = Executors.newSingleThreadExecutor(r -> {
         Thread t = new Thread(r, "seat-hold-expired-handler");
@@ -75,14 +66,10 @@ public class SeatHoldExpiredHandler {
         while (running) {
             try {
                 RBlockingQueue<String> blockingQueue = redissonClient.getBlockingQueue(DELAYED_QUEUE_KEY);
-                if (blockingQueue == null) {
-                    Thread.sleep(2000);
-                    continue;
-                }
                 // 최대 2초 대기 후 null 반환 (running 체크 가능하도록)
                 String message = blockingQueue.poll(2, TimeUnit.SECONDS);
                 if (message != null) {
-                    processExpiredSeat(message);
+                    handleMessage(message);
                 }
             } catch (InterruptedException e) {
                 Thread.currentThread().interrupt();
@@ -93,37 +80,30 @@ public class SeatHoldExpiredHandler {
         }
     }
 
-    @Transactional
-    public void processExpiredSeat(String message) {
+    /**
+     * 메시지를 파싱하여 {@link SeatHoldExpiredProcessor}에 위임합니다.
+     *
+     * <p>Spring Bean({@link SeatHoldExpiredProcessor})을 외부에서 호출하므로
+     * Spring AOP 프록시가 정상 동작하여 {@code @Transactional}이 적용됩니다.
+     */
+    private void handleMessage(String message) {
         String[] parts = message.split(":");
         if (parts.length != 3) {
             log.warn("잘못된 Delayed Queue 메시지 형식: {}", message);
             return;
         }
 
-        Long concertId = Long.parseLong(parts[0]);
-        Long scheduleId = Long.parseLong(parts[1]);
-        String seatNumber = parts[2];
+        try {
+            Long concertId = Long.parseLong(parts[0]);
+            Long scheduleId = Long.parseLong(parts[1]);
+            String seatNumber = parts[2];
 
-        log.debug("좌석 선점 만료 처리: concertId={}, scheduleId={}, seat={}", concertId, scheduleId, seatNumber);
-
-        // DB 좌석이 아직 HOLD 상태인 경우에만 AVAILABLE로 복구
-        Optional<ScheduleSeat> optSeat = scheduleSeatRepository
-                .findWithLockByScheduleIdAndSeatNumber(scheduleId, seatNumber);
-
-        optSeat.ifPresent(seat -> {
-            if (seat.getSeatStatus() == SeatStatus.HOLD) {
-                seat.updateSeatStatus(SeatStatus.AVAILABLE);
-                log.info("좌석 복구 완료 (HOLD → AVAILABLE): scheduleId={}, seat={}", scheduleId, seatNumber);
-
-                // Redis Hash 및 ZSET 인덱스 정리
-                String redisKey = SeatOccupyManager.generateSeatOccupyKey(concertId, scheduleId, seatNumber);
-                String indexKey = SeatOccupyManager.generateSeatOccupyIndexKey(concertId, scheduleId);
-                seatOccupyManager.cleanupRedis(redisKey, indexKey, seatNumber);
-
-                // SSE 브로드캐스트를 위한 이벤트 발행
-                eventPublisher.publishEvent(new SeatExpiredEvent(concertId, scheduleId, seatNumber));
-            }
-        });
+            // Spring AOP 프록시를 통해 호출 → @Transactional 정상 적용
+            seatHoldExpiredProcessor.processExpiredSeat(concertId, scheduleId, seatNumber);
+        } catch (NumberFormatException e) {
+            log.warn("Delayed Queue 메시지 파싱 오류: {}", message, e);
+        } catch (Exception e) {
+            log.error("좌석 만료 처리 실패: {}", message, e);
+        }
     }
 }

@@ -40,15 +40,22 @@ import java.util.UUID;
  * <ol>
  *   <li>DB 트랜잭션 커밋 완료</li>
  *   <li>{@code @TransactionalEventListener(AFTER_COMMIT)}에서 Redisson Delayed Queue에 만료 메시지 등록</li>
- *   <li>TTL 경과 후 {@code SeatHoldExpiredHandler}가 메시지를 소비하여 DB를 AVAILABLE로 복구</li>
+ *   <li>TTL 경과 후 {@link com.back.domain.concert.listener.SeatHoldExpiredProcessor}가
+ *       Spring AOP 프록시를 통해 @Transactional 트랜잭션으로 DB를 AVAILABLE로 복구</li>
+ *   <li>DB 커밋 성공 후(AFTER_COMMIT) Redis Hash/ZSET 정리</li>
  *   <li>SSE로 해당 회차 구독 클라이언트에게 좌석 상태 변경 이벤트 전송</li>
  * </ol>
  *
  * <h2>트랜잭션 안전성</h2>
  * <ul>
- *   <li>Redis Lua Script(원자적) 성공 → DB HOLD 업데이트</li>
- *   <li>DB 실패 시 catch 블록에서 Redis 키 보상 삭제 후 예외 재throw</li>
- *   <li>Delayed Queue 등록은 반드시 DB 커밋 후(AFTER_COMMIT) 수행</li>
+ *   <li>Redis Lua Script(원자적) 성공 → @Transactional 내에서 DB HOLD 업데이트</li>
+ *   <li>DB 업데이트 실패(예외) 시: catch 블록에서 Redis 키 보상 삭제 후 예외 재throw
+ *       → @Transactional이 자동으로 DB 롤백 처리</li>
+ *   <li>SOLD_OUT 충돌 시: Redis 보상 삭제 + ServiceException throw (DB 변경 없음)</li>
+ *   <li>Delayed Queue 등록은 반드시 DB 커밋 후(AFTER_COMMIT) 수행하여
+ *       롤백 시 Delayed Queue 메시지 등록을 방지</li>
+ *   <li>만료 처리 시 Redis cleanup은 DB 커밋 후(AFTER_COMMIT) 수행하여
+ *       DB 롤백 시 Redis 키가 불필요하게 삭제되지 않도록 보장</li>
  * </ul>
  */
 @Slf4j
@@ -123,26 +130,36 @@ public class SeatOccupyManager {
             throw new ServiceException(ErrorCode.SEAT_HELD_BY_OTHER_USER);
         }
 
-        // 2. DB HOLD 상태 즉시 반영 (트랜잭션 내)
+        // 2. DB HOLD 상태 즉시 반영 (@Transactional 내에서 PESSIMISTIC_WRITE 락으로 처리)
+        // Redis 선점(Lua Script)은 이미 성공했으므로,
+        // DB 업데이트 실패 시 Redis 키를 보상 삭제(cleanupRedis) 후 예외를 재throw해야 합니다.
+        // @Transactional이 자동으로 DB 변경사항을 롤백 처리합니다.
         try {
             ScheduleSeat seat = scheduleSeatRepository
                     .findWithLockByScheduleIdAndSeatNumber(scheduleId, seatNumber)
                     .orElseThrow(() -> new ServiceException(ErrorCode.SEAT_NOT_FOUND));
 
             if (seat.getSeatStatus() == SeatStatus.SOLD_OUT) {
-                // Redis는 성공했지만 DB는 이미 SOLD_OUT → Redis 보상 삭제
+                // Redis는 성공했지만 DB는 이미 SOLD_OUT → Redis 보상 삭제 후 예외 throw
+                // (DB에 변경사항이 없으므로 롤백할 내용도 없음)
                 cleanupRedis(redisKey, indexKey, seatNumber);
                 throw new ServiceException(ErrorCode.SEAT_ALREADY_SOLD);
             }
 
-            // 이미 본인이 HOLD 중인 경우 (재선점) → DB 상태 유지
+            // 이미 본인이 HOLD 중인 경우 (재선점) → DB 상태 유지, Redis 키만 갱신
             if (seat.getSeatStatus() != SeatStatus.HOLD) {
                 seat.updateSeatStatus(SeatStatus.HOLD);
             }
         } catch (ServiceException e) {
+            // ServiceException은 이미 처리 완료(SOLD_OUT의 경우 위에서 cleanupRedis 호출)
+            // 또는 SEAT_NOT_FOUND의 경우 Redis 보상 삭제 필요
+            if (e.getErrorCode() != ErrorCode.SEAT_ALREADY_SOLD) {
+                cleanupRedis(redisKey, indexKey, seatNumber);
+            }
             throw e;
         } catch (Exception e) {
-            // 예상치 못한 DB 오류 → Redis 보상 삭제
+            // 예상치 못한 DB 오류 → Redis 보상 삭제 후 예외 재throw
+            // @Transactional이 DB 롤백을 담당
             cleanupRedis(redisKey, indexKey, seatNumber);
             throw e;
         }
