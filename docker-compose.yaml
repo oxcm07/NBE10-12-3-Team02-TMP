@@ -1,0 +1,86 @@
+version: '3.8'
+
+services:
+  redis-master:
+    image: redis:7.2-alpine
+    container_name: redis-master
+    ports:
+      - "6379:6379"
+    command: redis-server --appendonly yes --requirepass ""
+    networks:
+      - redis-net
+
+  redis-slave:
+    image: redis:7.2-alpine
+    container_name: redis-slave
+    ports:
+      - "6380:6379"
+    command: redis-server --appendonly yes --replicaof redis-master 6379 --requirepass "" --masterauth ""
+    depends_on:
+      - redis-master
+    networks:
+      - redis-net
+
+  redis-sentinel-1:
+    image: redis:7.2-alpine
+    container_name: redis-sentinel-1
+    ports:
+      - "26379:26379"
+    command: >
+      sh -c "echo 'port 26379
+      sentinel monitor mymaster redis-master 6379 2
+      sentinel down-after-milliseconds mymaster 5000
+      sentinel failover-timeout mymaster 10000
+      sentinel parallel-syncs mymaster 1
+      sentinel resolve-hostnames yes
+      sentinel announce-hostnames yes' > /tmp/sentinel.conf &&
+      redis-sentinel /tmp/sentinel.conf"
+    depends_on:
+      - redis-master
+      - redis-slave
+    networks:
+      - redis-net
+
+  redis-sentinel-2:
+    image: redis:7.2-alpine
+    container_name: redis-sentinel-2
+    ports:
+      - "26380:26379"
+    command: >
+      sh -c "echo 'port 26379
+      sentinel monitor mymaster redis-master 6379 2
+      sentinel down-after-milliseconds mymaster 5000
+      sentinel failover-timeout mymaster 10000
+      sentinel parallel-syncs mymaster 1
+      sentinel resolve-hostnames yes
+      sentinel announce-hostnames yes' > /tmp/sentinel.conf &&
+      redis-sentinel /tmp/sentinel.conf"
+    depends_on:
+      - redis-master
+      - redis-slave
+    networks:
+      - redis-net
+
+  redis-sentinel-3:
+    image: redis:7.2-alpine
+    container_name: redis-sentinel-3
+    ports:
+      - "26381:26379"
+    command: >
+      sh -c "echo 'port 26379
+      sentinel monitor mymaster redis-master 6379 2
+      sentinel down-after-milliseconds mymaster 5000
+      sentinel failover-timeout mymaster 10000
+      sentinel parallel-syncs mymaster 1
+      sentinel resolve-hostnames yes
+      sentinel announce-hostnames yes' > /tmp/sentinel.conf &&
+      redis-sentinel /tmp/sentinel.conf"
+    depends_on:
+      - redis-master
+      - redis-slave
+    networks:
+      - redis-net
+
+networks:
+  redis-net:
+    driver: bridge

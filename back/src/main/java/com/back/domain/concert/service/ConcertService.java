@@ -121,7 +121,11 @@ public class ConcertService {
         if (seat.getSeatStatus() == SeatStatus.SOLD_OUT) {
             throw new ServiceException(ErrorCode.SEAT_ALREADY_SOLD);
         }
+        if (seat.getSeatStatus() == SeatStatus.HOLD) {
+            throw new ServiceException(ErrorCode.SEAT_HELD_BY_OTHER_USER);
+        }
     }
+
 
     public void validateConcertScheduleMatch(Long concertId, Long scheduleId) {
         scheduleRepository.findByScheduleIdAndConcert_ConcertId(scheduleId, concertId)

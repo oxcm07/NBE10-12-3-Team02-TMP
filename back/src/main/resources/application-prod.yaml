@@ -16,11 +16,24 @@ spring:
     properties:
       hibernate:
         format_sql: false
-  data:
-    redis:
-      host: ${REDIS_HOST}
-      port: ${REDIS_PORT:6379}
-      password: ${REDIS_PASSWORD}
+
+# Redisson Sentinel 설정 (운영 환경)
+spring.redis.redisson.config: |
+  sentinelServersConfig:
+    masterName: ${REDIS_SENTINEL_MASTER:mymaster}
+    sentinelAddresses:
+      - "redis://${REDIS_SENTINEL_1:127.0.0.1:26379}"
+      - "redis://${REDIS_SENTINEL_2:127.0.0.1:26380}"
+      - "redis://${REDIS_SENTINEL_3:127.0.0.1:26381}"
+    masterConnectionPoolSize: 16
+    slaveConnectionPoolSize: 16
+    readMode: SLAVE
+    subscriptionMode: MASTER
+    password: ${REDIS_PASSWORD:}
+    database: 0
+  threads: 32
+  nettyThreads: 64
+  codec: !<org.redisson.codec.JsonJacksonCodec> {}
   security:
     oauth2:
       front-callback-url: "https://nbe-10-12-2-team02-fv1h.vercel.app"

@@ -20,10 +20,6 @@ spring:
         format_sql: true
         highlight_sql: true
         use_sql_comments: true
-  data:
-    redis:
-      host: 127.0.0.1
-      port: 6379
   security:
     oauth2:
       front-callback-url: "http://localhost:3000"
