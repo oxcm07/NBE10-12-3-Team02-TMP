@@ -16,6 +16,7 @@ import org.redisson.api.RMap;
 import org.redisson.api.RScoredSortedSet;
 import org.redisson.api.RScript;
 import org.redisson.api.RedissonClient;
+import org.redisson.client.codec.StringCodec;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
@@ -106,7 +107,7 @@ public class SeatOccupyManager {
         long expireAt = now + (OCCUPY_TTL_SECONDS * 1000);
 
         // 1. Redis 원자적 선점 (Lua Script - StringCodec으로 raw 값 전달)
-        Long result = redissonClient.getScript(org.redisson.client.codec.StringCodec.INSTANCE).eval(
+        Long result = redissonClient.getScript(StringCodec.INSTANCE).eval(
                 RScript.Mode.READ_WRITE,
                 OCCUPY_SCRIPT,
                 RScript.ReturnType.LONG,

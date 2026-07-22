@@ -6,6 +6,7 @@ import com.back.domain.user.repository.UserRepository;
 import com.back.global.security.jwt.RefreshTokenValidationResult;
 import com.back.global.security.jwt.repository.BlacklistRepository;
 import com.back.global.security.jwt.repository.RefreshTokenRepository;
+import com.back.global.RedisTestConfig;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import jakarta.servlet.http.Cookie;
 import org.junit.jupiter.api.BeforeEach;
@@ -14,6 +15,7 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
+import org.springframework.context.annotation.Import;
 import org.springframework.http.MediaType;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.test.context.ActiveProfiles;
@@ -37,7 +39,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 @SpringBootTest
 @AutoConfigureMockMvc
 @Transactional
-@org.springframework.context.annotation.Import(com.back.global.RedisTestConfig.class)
+@Import(RedisTestConfig.class)
 class AuthControllerTest {
     private final MockMvc mockMvc;
     private final ObjectMapper objectMapper;

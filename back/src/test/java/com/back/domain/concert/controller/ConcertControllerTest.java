@@ -2,7 +2,6 @@ package com.back.domain.concert.controller;
 
 import com.back.domain.concert.entity.Concert;
 import com.back.domain.concert.repository.ConcertRepository;
-import com.back.domain.concert.service.SeatOccupyManager;
 import com.back.domain.schedule.entity.Schedule;
 import com.back.domain.schedule.entity.ScheduleSeat;
 import com.back.domain.schedule.entity.SeatStatus;
@@ -14,10 +13,14 @@ import com.back.global.security.SecurityUser;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+import org.redisson.api.RBlockingQueue;
 import org.redisson.api.RBucket;
+import org.redisson.api.RDelayedQueue;
 import org.redisson.api.RMap;
 import org.redisson.api.RScoredSortedSet;
+import org.redisson.api.RScript;
 import org.redisson.api.RedissonClient;
+import org.redisson.client.codec.Codec;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
@@ -31,6 +34,7 @@ import java.time.LocalDateTime;
 
 import static com.back.domain.schedule.entity.SeatStatus.AVAILABLE;
 import static org.mockito.ArgumentMatchers.*;
+import static org.mockito.Mockito.doReturn;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.user;
@@ -76,13 +80,13 @@ class ConcertControllerTest {
     void setUp() {
         // QueueInterceptor: 진입열 ZSET score 반환 (유효한 세션)
         RScoredSortedSet<String> activeSet = mock(RScoredSortedSet.class);
-        org.mockito.Mockito.doReturn(activeSet).when(redissonClient).getScoredSortedSet(anyString());
+        doReturn(activeSet).when(redissonClient).getScoredSortedSet(anyString());
         when(activeSet.getScore(anyString()))
                 .thenReturn((double) (System.currentTimeMillis() + 600000));
 
         // QueueInterceptor: 토큰 조회
         RBucket<String> tokenBucket = mock(RBucket.class);
-        org.mockito.Mockito.doReturn(tokenBucket).when(redissonClient).getBucket(anyString());
+        doReturn(tokenBucket).when(redissonClient).getBucket(anyString());
         when(tokenBucket.get()).thenReturn("test-queue-token");
 
         concert = Concert.create("아이유 콘서트", "설명", LocalDateTime.now(), LocalDateTime.now().plusDays(1), "poster.jpg");
@@ -166,21 +170,21 @@ class ConcertControllerTest {
         ScheduleSeat seat = ScheduleSeat.create(schedule, "VIP", "A-1", 150000, AVAILABLE);
         scheduleSeatRepository.save(seat);
 
-        // SeatOccupyManager: Lua Script 성공 mock (varargs 5개 포함 총 9개 인자 매칭)
-        org.redisson.api.RScript rScript = mock(org.redisson.api.RScript.class);
-        org.mockito.Mockito.doReturn(rScript).when(redissonClient).getScript();
-        org.mockito.Mockito.doReturn(rScript).when(redissonClient).getScript(any(org.redisson.client.codec.Codec.class));
+        // SeatOccupyManager: Lua Script 성공 mock
+        RScript rScript = mock(RScript.class);
+        doReturn(rScript).when(redissonClient).getScript();
+        doReturn(rScript).when(redissonClient).getScript(any(Codec.class));
         when(rScript.eval(any(), anyString(), any(), anyList(), any(), any(), any(), any(), any())).thenReturn(1L);
 
         // SeatOccupyManager: cleanupRedis / RMap mock
         RMap<String, String> rMap = mock(RMap.class);
-        org.mockito.Mockito.doReturn(rMap).when(redissonClient).getMap(anyString());
+        doReturn(rMap).when(redissonClient).getMap(anyString());
 
         // SeatOccupiedEventListener: Delayed Queue mock
-        org.redisson.api.RBlockingQueue<String> blockingQueue = mock(org.redisson.api.RBlockingQueue.class);
-        org.redisson.api.RDelayedQueue<String> delayedQueue = mock(org.redisson.api.RDelayedQueue.class);
-        org.mockito.Mockito.doReturn(blockingQueue).when(redissonClient).getBlockingQueue(anyString());
-        org.mockito.Mockito.doReturn(delayedQueue).when(redissonClient).getDelayedQueue(any());
+        RBlockingQueue<String> blockingQueue = mock(RBlockingQueue.class);
+        RDelayedQueue<String> delayedQueue = mock(RDelayedQueue.class);
+        doReturn(blockingQueue).when(redissonClient).getBlockingQueue(anyString());
+        doReturn(delayedQueue).when(redissonClient).getDelayedQueue(any());
 
         String requestBody = """
                 {
@@ -215,11 +219,8 @@ class ConcertControllerTest {
 
         // SeatOccupyManager.seatOccupyCancel: RMap에서 userId 반환
         RMap<String, String> rMap = mock(RMap.class);
-        org.mockito.Mockito.doReturn(rMap).when(redissonClient).getMap(anyString());
+        doReturn(rMap).when(redissonClient).getMap(anyString());
         when(rMap.get("userId")).thenReturn(userId.toString());
-
-        // ZSET index 정리 - getScoredSortedSet은 이미 activeSet으로 stub됨
-        // QueueInterceptor와 SeatOccupyManager가 동일한 getScoredSortedSet mock 사용
 
         String requestBody = """
                 {

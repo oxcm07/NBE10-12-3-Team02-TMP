@@ -3,16 +3,18 @@ package com.back.domain.queue;
 import com.back.domain.queue.constant.QueueEventType;
 import com.back.domain.queue.dto.QueueEventResponse;
 import com.back.domain.queue.event.QueueStatusEvent;
+import com.back.global.RedisTestConfig;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.context.annotation.Import;
 import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.test.context.ActiveProfiles;
 
 @ActiveProfiles("test")
 @SpringBootTest
-@org.springframework.context.annotation.Import(com.back.global.RedisTestConfig.class)
+@Import(RedisTestConfig.class)
 class WebSocketBenchmarkTest {
     @Autowired
     private SimpMessagingTemplate messagingTemplate;

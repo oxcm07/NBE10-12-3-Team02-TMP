@@ -8,11 +8,13 @@ import com.back.domain.user.repository.UserRepository;
 import com.back.global.security.oauth2.loginhandler.OAuth2LoginFailureHandler;
 import com.back.global.security.oauth2.loginhandler.OAuth2LoginSuccessHandler;
 import jakarta.servlet.http.HttpServletRequest;
+import com.back.global.RedisTestConfig;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
+import org.springframework.context.annotation.Import;
 import org.springframework.mock.web.MockHttpServletResponse;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.oauth2.core.OAuth2AuthenticationException;
@@ -37,7 +39,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 @SpringBootTest
 @AutoConfigureMockMvc
 @Transactional
-@org.springframework.context.annotation.Import(com.back.global.RedisTestConfig.class)
+@Import(RedisTestConfig.class)
 class OAuth2LoginIntegrationTest {
 
     @Autowired

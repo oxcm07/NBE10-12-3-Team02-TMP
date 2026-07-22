@@ -39,6 +39,7 @@ import static com.back.domain.schedule.entity.SeatStatus.HOLD;
 import static com.back.domain.schedule.entity.SeatStatus.SOLD_OUT;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.*;
+import static org.mockito.Mockito.doReturn;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.user;
@@ -97,26 +98,26 @@ class TicketControllerTest {
 
         // QueueInterceptor: 진입열 ZSET score 반환 (유효한 세션)
         RScoredSortedSet<String> activeSet = mock(RScoredSortedSet.class);
-        org.mockito.Mockito.doReturn(activeSet).when(redissonClient).getScoredSortedSet(anyString());
+        doReturn(activeSet).when(redissonClient).getScoredSortedSet(anyString());
         when(activeSet.getScore(anyString()))
                 .thenReturn((double) (System.currentTimeMillis() + 600000));
 
         // QueueInterceptor: 토큰 조회
         RBucket<String> tokenBucket = mock(RBucket.class);
-        org.mockito.Mockito.doReturn(tokenBucket).when(redissonClient).getBucket(anyString());
+        doReturn(tokenBucket).when(redissonClient).getBucket(anyString());
         when(tokenBucket.get()).thenReturn("test-queue-token");
 
-        // TicketService.validateSeatHold: RMap 기본값 (setUp에서 덮어쓀)
+        // TicketService.validateSeatHold: RMap 기본값 (setUp에서 덮어씀)
         RMap<String, String> hashMap = mock(RMap.class);
-        org.mockito.Mockito.doReturn(hashMap).when(redissonClient).getMap(anyString());
+        doReturn(hashMap).when(redissonClient).getMap(anyString());
         when(hashMap.get("userId")).thenReturn(user.getUserId().toString());
         when(hashMap.get("occupyToken")).thenReturn("test-token");
 
         // TicketService.cancelDelayedQueueMessage: Delayed Queue mock
         RBlockingQueue<String> blockingQueue = mock(RBlockingQueue.class);
         RDelayedQueue<String> delayedQueue = mock(RDelayedQueue.class);
-        org.mockito.Mockito.doReturn(blockingQueue).when(redissonClient).getBlockingQueue(anyString());
-        org.mockito.Mockito.doReturn(delayedQueue).when(redissonClient).getDelayedQueue(any());
+        doReturn(blockingQueue).when(redissonClient).getBlockingQueue(anyString());
+        doReturn(delayedQueue).when(redissonClient).getDelayedQueue(any());
 
         concert = concertRepository.save(Concert.create(
                 "싸이 콘서트", "설명", LocalDateTime.now(), LocalDateTime.now().plusDays(1), "poster.jpg"));
@@ -136,6 +137,7 @@ class TicketControllerTest {
     void createTicket() throws Exception {
         // A-1, A-2 에 대한 토큰 반환
         RMap<String, String> hashMap = mock(RMap.class);
+        doReturn(hashMap).when(redissonClient).getMap(anyString());
         when(redissonClient.getMap(anyString())).thenAnswer(invocation -> {
             String key = invocation.getArgument(0, String.class);
             RMap<String, String> map = mock(RMap.class);

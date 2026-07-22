@@ -5,6 +5,7 @@ import com.back.global.exception.ErrorCode;
 import com.back.global.exception.ServiceException;
 import lombok.RequiredArgsConstructor;
 import org.redisson.api.*;
+import org.redisson.client.codec.StringCodec;
 import org.springframework.stereotype.Component;
 
 import java.time.Duration;
@@ -49,7 +50,7 @@ public class WaitingQueueManager {
         activeSchedules.add(scheduleId.toString());
 
         // Lua Script: 이미 등록된 경우 기존 순번 반환, 신규면 INCR 후 ZADD
-        RScript script = redissonClient.getScript(org.redisson.client.codec.StringCodec.INSTANCE);
+        RScript script = redissonClient.getScript(StringCodec.INSTANCE);
         Long rank = script.eval(
                 RScript.Mode.READ_WRITE,
                 """
@@ -131,7 +132,7 @@ public class WaitingQueueManager {
         long now = System.currentTimeMillis();
         long expiredAt = now + ttl.toMillis();
 
-        RScript script = redissonClient.getScript(org.redisson.client.codec.StringCodec.INSTANCE);
+        RScript script = redissonClient.getScript(StringCodec.INSTANCE);
         List<String> userIds = script.eval(
                 RScript.Mode.READ_WRITE,
                 """

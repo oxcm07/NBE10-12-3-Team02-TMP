@@ -9,6 +9,7 @@ import org.redisson.api.RBucket;
 import org.redisson.api.RScript;
 import org.redisson.api.RSet;
 import org.redisson.api.RedissonClient;
+import org.redisson.client.codec.StringCodec;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Repository;
 
@@ -54,7 +55,7 @@ public class RefreshTokenRepository {
         String newTokenKey = generateKey(RefreshTokenKeyType.TOKEN, userId, newJti);
         String indexKey = generateKey(RefreshTokenKeyType.INDEX, userId, null);
 
-        Long result = redissonClient.getScript(org.redisson.client.codec.StringCodec.INSTANCE).eval(
+        Long result = redissonClient.getScript(StringCodec.INSTANCE).eval(
                 RScript.Mode.READ_WRITE,
                 """
                 local oldValue = redis.call('GET', KEYS[1])

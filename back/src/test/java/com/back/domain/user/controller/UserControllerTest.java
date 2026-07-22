@@ -3,6 +3,7 @@ package com.back.domain.user.controller;
 import com.back.domain.user.entity.LoginType;
 import com.back.domain.user.entity.User;
 import com.back.domain.user.repository.UserRepository;
+import com.back.global.RedisTestConfig;
 import com.back.global.security.SecurityUser;
 import com.back.global.security.jwt.repository.BlacklistRepository;
 import com.back.global.security.jwt.JwtTokenProvider;
@@ -15,6 +16,7 @@ import org.mockito.Mockito;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
+import org.springframework.context.annotation.Import;
 import org.springframework.http.MediaType;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.test.context.ActiveProfiles;
@@ -35,7 +37,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 @SpringBootTest
 @AutoConfigureMockMvc
 @Transactional
-@org.springframework.context.annotation.Import(com.back.global.RedisTestConfig.class)
+@Import(RedisTestConfig.class)
 class UserControllerTest {
 
     private final MockMvc mockMvc;
