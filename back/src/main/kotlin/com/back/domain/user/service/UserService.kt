@@ -53,7 +53,7 @@ class UserService(
             User.create(
                 loginId = id,
                 email = email,
-                password = passwordEncoder.encode(password),
+                password = passwordEncoder.encode(password)!!,
                 name = name,
                 loginType = LoginType.NORMAL
             )
@@ -134,7 +134,7 @@ class UserService(
 
         val password = request.password
         if (password != null) {
-            user.updatePassword(passwordEncoder.encode(password))
+            user.updatePassword(passwordEncoder.encode(password)!!)
         }
     }
 

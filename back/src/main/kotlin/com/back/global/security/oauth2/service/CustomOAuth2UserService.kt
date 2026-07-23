@@ -100,7 +100,7 @@ class CustomOAuth2UserService(
             throw OAuth2AuthenticationException("oauth2_email_already_exists")
         }
 
-        val randomPassword = passwordEncoder.encode(UUID.randomUUID().toString())
+        val randomPassword = passwordEncoder.encode(UUID.randomUUID().toString())!!
 
         val user = User.createOAuth(
             loginId = loginId,
