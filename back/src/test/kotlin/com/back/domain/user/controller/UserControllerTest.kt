@@ -57,7 +57,7 @@ class UserControllerTest @Autowired constructor(
             User.create(
                 "testuser",
                 "test@naver.com",
-                passwordEncoder.encode("q1w2e3r4"),
+                passwordEncoder.encode("q1w2e3r4")!!,
                 "홍길동",
                 LoginType.NORMAL
             )
@@ -261,7 +261,7 @@ class UserControllerTest @Autowired constructor(
     @DisplayName("마이페이지 수정 실패 - 이메일 중복")
     fun t11() {
         userRepository.save(
-            User.create("otheruser", "other@naver.com", passwordEncoder.encode("q1w2e3r4"), "김철수", LoginType.NORMAL)
+            User.create("otheruser", "other@naver.com", passwordEncoder.encode("q1w2e3r4")!!, "김철수", LoginType.NORMAL)
         )
 
         mockMvc.perform(
@@ -306,7 +306,7 @@ class UserControllerTest @Autowired constructor(
     @DisplayName("아이디 중복확인 실패 - 중복")
     fun t14() {
         userRepository.save(
-            User.create("existuser", "exist@naver.com", passwordEncoder.encode("q1w2e3r4"), "홍길동", LoginType.NORMAL)
+            User.create("existuser", "exist@naver.com", passwordEncoder.encode("q1w2e3r4")!!, "홍길동", LoginType.NORMAL)
         )
 
         mockMvc.perform(

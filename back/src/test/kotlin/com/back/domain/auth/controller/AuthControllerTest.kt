@@ -56,7 +56,7 @@ class AuthControllerTest @Autowired constructor(
             User.create(
                 loginId = LOGIN_ID,
                 email = "test@naver.com",
-                password = passwordEncoder.encode(PASSWORD),
+                password = passwordEncoder.encode(PASSWORD)!!,
                 name = "홍길동",
                 loginType = LoginType.NORMAL
             )
@@ -150,7 +150,7 @@ class AuthControllerTest @Autowired constructor(
     fun t6() {
         val loginResult = login()
 
-        val refreshTokenCookie = loginResult.response.getCookie("refreshToken")
+        val refreshTokenCookie = loginResult.response.getCookie("refreshToken")!!
         val authorization = loginResult.response.getHeader("Authorization")!!
         val accessToken = authorization.substring("Bearer ".length)
 
