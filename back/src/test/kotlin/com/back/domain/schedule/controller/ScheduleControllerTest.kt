@@ -9,13 +9,17 @@ import com.back.domain.schedule.repository.ScheduleRepository
 import com.back.domain.schedule.repository.ScheduleSeatRepository
 import com.back.domain.venue.entity.Venue
 import com.back.domain.venue.repository.VenueRepository
+import com.back.global.RedisTestConfig
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.DisplayName
 import org.junit.jupiter.api.Test
+import org.redisson.api.RedissonClient
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.boot.test.context.SpringBootTest
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc
+import org.springframework.context.annotation.Import
 import org.springframework.test.context.ActiveProfiles
+import org.springframework.test.context.bean.override.mockito.MockitoBean
 import org.springframework.test.web.servlet.MockMvc
 import org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get
 import org.springframework.test.web.servlet.result.MockMvcResultHandlers.print
@@ -28,6 +32,7 @@ import java.time.LocalDateTime
 @SpringBootTest
 @AutoConfigureMockMvc
 @Transactional
+@Import(RedisTestConfig::class)
 class ScheduleControllerTest @Autowired constructor(
     private val mockMvc: MockMvc,
     private val concertRepository: ConcertRepository,
@@ -37,6 +42,9 @@ class ScheduleControllerTest @Autowired constructor(
 ) {
     private lateinit var concert: Concert
     private lateinit var schedule: Schedule
+
+    @MockitoBean
+    private lateinit var redissonClient: RedissonClient
 
     @BeforeEach
     fun setUp() {
