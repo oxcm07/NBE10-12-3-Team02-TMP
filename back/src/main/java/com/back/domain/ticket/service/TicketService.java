@@ -12,6 +12,7 @@ import com.back.domain.schedule.repository.ScheduleSeatRepository;
 import com.back.domain.ticket.dto.PaymentTicketRequest;
 import com.back.domain.ticket.dto.PaymentTicketResponse;
 import com.back.domain.ticket.dto.SeatHoldInfo;
+import com.back.domain.ticket.dto.TicketVerifyResponse;
 import com.back.domain.ticket.entity.Ticket;
 import com.back.domain.ticket.event.PaymentCompletedEvent;
 import com.back.domain.ticket.event.TicketCancelledEvent;
@@ -162,6 +163,12 @@ public class TicketService {
         sseEmitterRegistry.broadcast(scheduleId, seatNumber, SeatStatus.AVAILABLE.name());
 
         eventPublisher.publishEvent(new TicketCancelledEvent(concertId, scheduleId, userId));
+    }
+
+    public TicketVerifyResponse verifyTicket(String qrToken) {
+        Ticket ticket = ticketRepository.findByQrTokenWithDetails(qrToken)
+                .orElseThrow(() -> new ServiceException(ErrorCode.TICKET_NOT_FOUND));
+        return TicketVerifyResponse.from(ticket);
     }
 
     public String createTicketNumber() {

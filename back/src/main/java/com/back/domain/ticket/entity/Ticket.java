@@ -5,6 +5,7 @@ import com.back.domain.schedule.entity.ScheduleSeat;
 import com.back.domain.user.entity.User;
 import com.back.global.jpa.entity.BaseEntity;
 import jakarta.persistence.*;
+import java.util.UUID;
 import lombok.AccessLevel;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
@@ -32,22 +33,26 @@ public class Ticket extends BaseEntity {
     @Column(nullable = false, unique = true)
     private String ticketNumber;
 
+    @Column(unique = true)
+    private String qrToken;
+
     @Column(nullable = false)
     private int ticketPrice;
 
     @Column(nullable = false)
     private boolean isValid = true;
 
-   private Ticket(User user,Schedule schedule,ScheduleSeat scheduleSeat,String ticketNumber,int ticketPrice,boolean isValid) {
+   private Ticket(User user,Schedule schedule,ScheduleSeat scheduleSeat,String ticketNumber,String qrToken,int ticketPrice,boolean isValid) {
        this.user = user;
        this.schedule = schedule;
        this.scheduleSeat = scheduleSeat;
        this.ticketNumber = ticketNumber;
+       this.qrToken = qrToken;
        this.ticketPrice = ticketPrice;
        this.isValid = isValid;
    }
    public static Ticket create(User user,Schedule schedule,ScheduleSeat scheduleSeat,String ticketNumber,int ticketPrice) {
-       return new Ticket(user,schedule,scheduleSeat,ticketNumber,ticketPrice,true);
+       return new Ticket(user,schedule,scheduleSeat,ticketNumber, UUID.randomUUID().toString(),ticketPrice,true);
    }
     public void updateIsValid(boolean isValid) {
         this.isValid = isValid;
