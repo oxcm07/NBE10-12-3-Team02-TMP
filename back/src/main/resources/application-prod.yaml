@@ -2,9 +2,6 @@ server:
   forward-headers-strategy: framework
 
 spring:
-  threads:
-    virtual:
-      enabled: true
   application:
     name: back
   datasource:
