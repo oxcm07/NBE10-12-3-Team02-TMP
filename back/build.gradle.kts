@@ -1,10 +1,9 @@
 plugins {
-    java
     kotlin("jvm") version "2.4.10"
     kotlin("plugin.spring") version "2.4.10"
-    kotlin("plugin.jpa") version "2.4.10"
     id("org.springframework.boot") version "4.0.7"
     id("io.spring.dependency-management") version "1.1.7"
+    kotlin("plugin.jpa") version "2.4.10"
 }
 
 group = "com"
@@ -14,13 +13,6 @@ description = "back"
 java {
     toolchain {
         languageVersion = JavaLanguageVersion.of(25)
-    }
-}
-
-tasks.withType<org.jetbrains.kotlin.gradle.tasks.KotlinCompile> {
-    compilerOptions {
-        freeCompilerArgs.addAll("-Xjsr305=strict")
-        jvmTarget.set(org.jetbrains.kotlin.gradle.dsl.JvmTarget.JVM_21)
     }
 }
 
@@ -62,6 +54,19 @@ dependencies {
     //WebSocket
     implementation("org.springframework.boot:spring-boot-starter-websocket")
     testImplementation("org.springframework.boot:spring-boot-starter-websocket-test")
+}
+
+kotlin {
+    compilerOptions {
+        freeCompilerArgs.addAll("-Xjsr305=strict", "-Xannotation-default-target=param-property")
+        jvmTarget.set(org.jetbrains.kotlin.gradle.dsl.JvmTarget.JVM_21)
+    }
+}
+
+allOpen {
+    annotation("jakarta.persistence.Entity")
+    annotation("jakarta.persistence.MappedSuperclass")
+    annotation("jakarta.persistence.Embeddable")
 }
 
 tasks.withType<Test> {
