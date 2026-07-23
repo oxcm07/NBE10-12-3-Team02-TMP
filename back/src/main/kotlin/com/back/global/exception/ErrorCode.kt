@@ -1,14 +1,12 @@
-package com.back.global.exception;
+package com.back.global.exception
 
-import lombok.Getter;
-import lombok.RequiredArgsConstructor;
-
-
-@Getter
-@RequiredArgsConstructor
-public enum ErrorCode {
-    //global
+enum class ErrorCode(
+    val resultCode: String,
+    val message: String
+) {
+    // global
     BAD_REQUEST("400-4", "잘못된 요청입니다."),
+
     // Auth
     AUTH_PASSWORD_MISMATCH("401-2", "비밀번호가 일치하지 않습니다."),
     AUTH_INVALID_BEARER_HEADER("401-3", "Authorization 헤더가 Bearer 형식이 아닙니다."),
@@ -41,13 +39,14 @@ public enum ErrorCode {
     SEAT_ALREADY_SOLD("409-3", "이미 판매 완료된 좌석입니다."),
     SEAT_HELD_BY_OTHER_USER("409-5", "다른 사용자가 선택 중인 좌석입니다."),
     SEAT_HOLD_EXPIRED("409-6", "좌석 점유가 만료되었습니다."),
-    INVALID_OCCUPY_TOKEN("409-7","유효하지 않은 점유 토큰입니다."),
+    INVALID_OCCUPY_TOKEN("409-7", "유효하지 않은 점유 토큰입니다."),
 
     // Ticket
     TICKET_NOT_FOUND("404-5", "존재하지 않는 티켓입니다."),
     TICKET_NOT_FOUND_FOR_USER("404-6", "해당 유저의 티켓이 존재하지 않습니다."),
     TICKET_ALREADY_CANCELLED("400-3", "이미 취소된 티켓입니다."),
     EXCEED_TICKET_LIMIT("400-2", "회차당 최대 3매까지 예매 가능합니다."),
+
     // bucket4j
     TOO_MANY_REQUESTS("429-1", "요청이 너무 많습니다."),
 
@@ -56,17 +55,10 @@ public enum ErrorCode {
     QUEUE_SESSION_EXPIRED("403-3", "대기열 접속 시간이 만료되었습니다."),
 
     // WAITING
-    WAITING_QUEUE_NOT_FOUND("404-8","대기열에 등록되지 않은 사용자입니다."),
+    WAITING_QUEUE_NOT_FOUND("404-8", "대기열에 등록되지 않은 사용자입니다."),
     WAITING_QUEUE_REGISTER_FAILED("500-2", "대기열 등록 처리 중 오류가 발생했습니다."),
     CONCERT_SOLD_OUT("400-5", "콘서트가 매진되어 대기열이 종료되었습니다.");
 
-
-
-    private final String resultCode;
-    private final String message;
-
-    public int getStatusCode() {
-        return Integer.parseInt(resultCode.split("-", 2)[0]);
-    }
-
+    val statusCode: Int
+        get() = resultCode.split("-", limit = 2)[0].toInt()
 }
