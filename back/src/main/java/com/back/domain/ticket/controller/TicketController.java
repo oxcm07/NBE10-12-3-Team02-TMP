@@ -2,6 +2,7 @@ package com.back.domain.ticket.controller;
 
 import com.back.domain.ticket.dto.PaymentTicketRequest;
 import com.back.domain.ticket.dto.PaymentTicketResponse;
+import com.back.domain.ticket.dto.TicketVerifyResponse;
 import com.back.domain.ticket.service.TicketService;
 import com.back.global.annotation.ApiV1;
 import com.back.global.requestcontext.RequestContext;
@@ -50,6 +51,16 @@ public class TicketController {
                 "200-1",
                 "티켓 취소 성공",
                 null
+        );
+    }
+
+    @GetMapping("/verify/{qrToken}")
+    @Operation(summary = "티켓 QR 검증", description = "QR 토큰으로 티켓 유효성을 검증합니다 (인증 불필요)")
+    public RsData<TicketVerifyResponse> verifyTicket(@PathVariable String qrToken) {
+        return new RsData<>(
+                "200-1",
+                "티켓 검증 성공",
+                ticketService.verifyTicket(qrToken)
         );
     }
 }

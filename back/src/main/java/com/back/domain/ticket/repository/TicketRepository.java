@@ -23,4 +23,14 @@ public interface TicketRepository extends JpaRepository<Ticket, Long> {
     List<Ticket> findAllByUserWithConcert(@Param("user") User user);
 
     long countByUser_UserIdAndSchedule_ScheduleIdAndIsValidTrue(Long userId, Long scheduleId);
+
+    @Query("""
+        SELECT t FROM Ticket t
+        JOIN FETCH t.schedule s
+        JOIN FETCH s.concert
+        JOIN FETCH s.venue
+        JOIN FETCH t.scheduleSeat
+        WHERE t.qrToken = :qrToken
+    """)
+    Optional<Ticket> findByQrTokenWithDetails(@Param("qrToken") String qrToken);
 }

@@ -1,14 +1,16 @@
 "use client";
 
-import { Suspense, useState } from "react";
+import { Suspense, useEffect, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { ChevronLeft, Printer } from "lucide-react";
+import { QRCodeSVG } from "qrcode.react";
 import { getLocalConcertPoster } from "@/lib/concertDetailImages";
 
 interface TicketSummary {
   ticketId: number;
   ticketNumber: string;
+  qrToken?: string;
   seatNumber: string;
   gradeName: string;
   ticketPrice: number;
@@ -42,6 +44,11 @@ function TicketDetailContent() {
   const searchParams = useSearchParams();
   const [group] = useState<TicketGroupInfo | null>(() => parseGroup(searchParams.get("group")));
   const [isFlipped, setIsFlipped] = useState(false);
+  const [origin, setOrigin] = useState("");
+
+  useEffect(() => {
+    setOrigin(window.location.origin);
+  }, []);
 
   if (!group) {
     return (
@@ -127,7 +134,7 @@ function TicketDetailContent() {
         <div className="max-w-xs mx-auto" style={{ perspective: "1200px" }}>
           <button
             onClick={() => setIsFlipped((prev) => !prev)}
-            className="ticket-flip-inner relative w-full aspect-[3/5] block text-left"
+            className="ticket-flip-inner relative w-full block text-left"
             style={{
               transformStyle: "preserve-3d",
               transition: "transform 0.6s cubic-bezier(0.4, 0, 0.2, 1)",
@@ -158,7 +165,7 @@ function TicketDetailContent() {
 
             {/* 뒷면: 좌석 전체 + 합산 금액 (서비스 시그니처 블루) — 실제 티켓 라벨 구조로 구성 */}
             <div
-              className="ticket-face ticket-face-mask absolute inset-0 shadow-xl overflow-hidden bg-blue-600 text-white p-6 pt-8 flex flex-col text-left"
+              className="ticket-face ticket-face-mask relative w-full shadow-xl bg-blue-600 text-white p-6 pt-8 flex flex-col text-left"
               style={{ backfaceVisibility: "hidden", transform: "rotateY(180deg)" }}
             >
               <div className="flex items-center justify-between mb-3">
@@ -215,7 +222,7 @@ function TicketDetailContent() {
                 </div>
               </div>
 
-              <div className="mt-3 mb-6">
+              <div className="mt-3 mb-3">
                 <span
                   className={`px-3 py-1 text-xs rounded-full font-semibold ${
                     allInvalid ? "bg-white/20 text-white" : "bg-white text-blue-700"
@@ -225,7 +232,30 @@ function TicketDetailContent() {
                 </span>
               </div>
 
-              <p className="no-print text-blue-200 text-[11px] mt-auto pt-4 text-center">탭하여 앞면으로 ↻</p>
+              {group.tickets.some((t) => t.qrToken) && origin && (
+                <div className="border-t border-white/20 pt-3 mb-2">
+                  <p className="text-blue-200 text-[10px] tracking-widest mb-2">QR CODE</p>
+                  <div className="flex gap-3 justify-center flex-wrap">
+                    {group.tickets.map((t, index) =>
+                      t.qrToken ? (
+                        <div key={t.ticketId} className="flex flex-col items-center gap-1">
+                          {group.tickets.length > 1 && (
+                            <span className="text-[9px] text-blue-200">No.{index + 1}</span>
+                          )}
+                          <div className="bg-white p-1.5 rounded">
+                            <QRCodeSVG
+                              value={`${origin}/verify/${t.qrToken}`}
+                              size={group.tickets.length === 1 ? 80 : 60}
+                            />
+                          </div>
+                        </div>
+                      ) : null
+                    )}
+                  </div>
+                </div>
+              )}
+
+              <p className="no-print text-blue-200 text-[11px] mt-auto pt-2 text-center">탭하여 앞면으로 ↻</p>
             </div>
           </button>
         </div>

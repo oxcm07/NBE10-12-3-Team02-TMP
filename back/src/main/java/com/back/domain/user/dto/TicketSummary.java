@@ -5,6 +5,7 @@ import com.back.domain.ticket.entity.Ticket;
 public record TicketSummary(
         Long ticketId,
         String ticketNumber,
+        String qrToken,
         String seatNumber,
         String gradeName,
         int ticketPrice,
@@ -15,6 +16,7 @@ public record TicketSummary(
         return new TicketSummary(
                 ticket.getTicketId(),
                 ticket.getTicketNumber(),
+                ticket.getQrToken(),
                 ticket.getScheduleSeat().getSeatNumber(),
                 ticket.getScheduleSeat().getGradeName(),
                 ticket.getTicketPrice(),
