@@ -2,9 +2,9 @@ package com.back.domain.concert.controller;
 
 import com.back.domain.concert.entity.Concert;
 import com.back.domain.concert.repository.ConcertRepository;
-import com.back.domain.concert.service.SeatOccupyManager;
 import com.back.domain.schedule.entity.Schedule;
 import com.back.domain.schedule.entity.ScheduleSeat;
+import com.back.domain.schedule.entity.SeatStatus;
 import com.back.domain.schedule.repository.ScheduleRepository;
 import com.back.domain.schedule.repository.ScheduleSeatRepository;
 import com.back.domain.venue.entity.Venue;
@@ -13,14 +13,17 @@ import com.back.global.security.SecurityUser;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+import org.redisson.api.RBlockingQueue;
+import org.redisson.api.RBucket;
+import org.redisson.api.RDelayedQueue;
+import org.redisson.api.RMap;
+import org.redisson.api.RScoredSortedSet;
+import org.redisson.api.RScript;
+import org.redisson.api.RedissonClient;
+import org.redisson.client.codec.Codec;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
-import org.springframework.data.redis.core.HashOperations;
-import org.springframework.data.redis.core.StringRedisTemplate;
-import org.springframework.data.redis.core.ValueOperations;
-import org.springframework.data.redis.core.ZSetOperations;
-import org.springframework.data.redis.core.script.RedisScript;
 import org.springframework.http.MediaType;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
@@ -31,6 +34,7 @@ import java.time.LocalDateTime;
 
 import static com.back.domain.schedule.entity.SeatStatus.AVAILABLE;
 import static org.mockito.ArgumentMatchers.*;
+import static org.mockito.Mockito.doReturn;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.user;
@@ -69,13 +73,21 @@ class ConcertControllerTest {
     }
 
     @MockitoBean
-    private StringRedisTemplate redisTemplate;
+    private RedissonClient redissonClient;
 
     @BeforeEach
+    @SuppressWarnings({"unchecked", "rawtypes"})
     void setUp() {
-        ValueOperations<String, String> valueOperations = mock(ValueOperations.class);
-        when(redisTemplate.opsForValue()).thenReturn(valueOperations);
-        when(valueOperations.get(anyString())).thenReturn("test-queue-token");
+        // QueueInterceptor: 진입열 ZSET score 반환 (유효한 세션)
+        RScoredSortedSet<String> activeSet = mock(RScoredSortedSet.class);
+        doReturn(activeSet).when(redissonClient).getScoredSortedSet(anyString());
+        when(activeSet.getScore(anyString()))
+                .thenReturn((double) (System.currentTimeMillis() + 600000));
+
+        // QueueInterceptor: 토큰 조회
+        RBucket<String> tokenBucket = mock(RBucket.class);
+        doReturn(tokenBucket).when(redissonClient).getBucket(anyString());
+        when(tokenBucket.get()).thenReturn("test-queue-token");
 
         concert = Concert.create("아이유 콘서트", "설명", LocalDateTime.now(), LocalDateTime.now().plusDays(1), "poster.jpg");
         concertRepository.save(concert);
@@ -95,16 +107,6 @@ class ConcertControllerTest {
 
         ScheduleSeat seat2 = ScheduleSeat.create(schedule, "A", "B-2", 70000, AVAILABLE);
         scheduleSeatRepository.save(seat2);
-
-        @SuppressWarnings("unchecked")
-        ZSetOperations<String, String> zSetOperations = mock(ZSetOperations.class);
-        when(redisTemplate.opsForZSet()).thenReturn(zSetOperations);
-
-        when(zSetOperations.score(anyString(), anyString()))
-                .thenReturn((double) (System.currentTimeMillis() + 600000));
-
-        when(zSetOperations.rangeByScore(anyString(), anyDouble(), anyDouble()))
-                .thenReturn(java.util.Collections.emptySet());
 
         mockMvc.perform(get("/api/v1/concerts/{concertId}/schedules/{scheduleId}/seats", concert.getConcertId(), schedule.getScheduleId())
                         .header("X-Queue-Token", "test-queue-token")
@@ -163,21 +165,26 @@ class ConcertControllerTest {
 
     @Test
     @DisplayName("좌석 임시 선점 성공")
+    @SuppressWarnings({"unchecked", "rawtypes"})
     void t4() throws Exception {
         ScheduleSeat seat = ScheduleSeat.create(schedule, "VIP", "A-1", 150000, AVAILABLE);
         scheduleSeatRepository.save(seat);
 
-        when(redisTemplate.execute(
-                any(RedisScript.class),
-                anyList(),
-                any(Object[].class)
-        )).thenReturn(1L);
+        // SeatOccupyManager: Lua Script 성공 mock
+        RScript rScript = mock(RScript.class);
+        doReturn(rScript).when(redissonClient).getScript();
+        doReturn(rScript).when(redissonClient).getScript(any(Codec.class));
+        when(rScript.eval(any(), anyString(), any(), anyList(), any(), any(), any(), any(), any())).thenReturn(1L);
 
-        ZSetOperations<String, String> zSetOperations = mock(ZSetOperations.class);
-        when(redisTemplate.opsForZSet()).thenReturn(zSetOperations);
+        // SeatOccupyManager: cleanupRedis / RMap mock
+        RMap<String, String> rMap = mock(RMap.class);
+        doReturn(rMap).when(redissonClient).getMap(anyString());
 
-        when(zSetOperations.score(anyString(), anyString()))
-                .thenReturn((double) (System.currentTimeMillis() + 600000));
+        // SeatOccupiedEventListener: Delayed Queue mock
+        RBlockingQueue<String> blockingQueue = mock(RBlockingQueue.class);
+        RDelayedQueue<String> delayedQueue = mock(RDelayedQueue.class);
+        doReturn(blockingQueue).when(redissonClient).getBlockingQueue(anyString());
+        doReturn(delayedQueue).when(redissonClient).getDelayedQueue(any());
 
         String requestBody = """
                 {
@@ -201,19 +208,19 @@ class ConcertControllerTest {
 
     @Test
     @DisplayName("좌석 임시 선점 취소 성공")
+    @SuppressWarnings({"unchecked", "rawtypes"})
     void t5() throws Exception {
         Long userId = 1L;
         String seatNumber = "A-1";
-        String redisKey = SeatOccupyManager.generateSeatOccupyKey(concert.getConcertId(), schedule.getScheduleId(), seatNumber);
 
-        @SuppressWarnings("unchecked")
-        HashOperations<String, Object, Object> hashOperations = mock(HashOperations.class);
-        when(redisTemplate.opsForHash()).thenReturn(hashOperations);
-        when(hashOperations.get(redisKey, "userId")).thenReturn(userId.toString());
+        // 먼저 DB에 HOLD 상태로 좌석 생성
+        ScheduleSeat seat = ScheduleSeat.create(schedule, "VIP", seatNumber, 150000, SeatStatus.HOLD);
+        scheduleSeatRepository.save(seat);
 
-        @SuppressWarnings("unchecked")
-        ZSetOperations<String, String> zSetOperations = mock(ZSetOperations.class);
-        when(redisTemplate.opsForZSet()).thenReturn(zSetOperations);
+        // SeatOccupyManager.seatOccupyCancel: RMap에서 userId 반환
+        RMap<String, String> rMap = mock(RMap.class);
+        doReturn(rMap).when(redissonClient).getMap(anyString());
+        when(rMap.get("userId")).thenReturn(userId.toString());
 
         String requestBody = """
                 {

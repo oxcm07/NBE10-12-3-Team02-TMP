@@ -7,27 +7,40 @@ import com.back.global.requestcontext.RequestContext;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
-import org.springframework.data.redis.core.StringRedisTemplate;
+import org.redisson.api.RScoredSortedSet;
+import org.redisson.api.RBucket;
+import org.redisson.api.RedissonClient;
 import org.springframework.stereotype.Component;
 import org.springframework.web.servlet.HandlerInterceptor;
 import org.springframework.web.servlet.HandlerMapping;
 
 import java.util.Map;
 
+/**
+ * 대기열 진입 세션 검증 인터셉터.
+ *
+ * <p>좌석 선택/선점 API 요청 시 진입열(Active Queue)에 유효한 세션이 존재하는지 확인합니다.
+ * <ol>
+ *   <li>진입열 ZSET에서 유저 ID의 Score(만료 타임스탬프) 조회 - 만료 여부 확인</li>
+ *   <li>Redis에 저장된 진입 토큰과 요청 헤더의 X-Queue-Token 일치 여부 확인</li>
+ * </ol>
+ */
 @Component
 @RequiredArgsConstructor
 public class QueueInterceptor implements HandlerInterceptor {
-    private final StringRedisTemplate redisTemplate;
+
+    private final RedissonClient redissonClient;
     private final RequestContext requestContext;
 
     @Override
-    public boolean preHandle(HttpServletRequest request, HttpServletResponse response, Object handler) throws Exception {
+    public boolean preHandle(HttpServletRequest request, HttpServletResponse response, Object handler) {
         if ("DELETE".equalsIgnoreCase(request.getMethod())) {
             return true;
         }
 
         @SuppressWarnings("unchecked")
-        Map<String, String> pathVariables = (Map<String, String>) request.getAttribute(HandlerMapping.URI_TEMPLATE_VARIABLES_ATTRIBUTE);
+        Map<String, String> pathVariables = (Map<String, String>) request.getAttribute(
+                HandlerMapping.URI_TEMPLATE_VARIABLES_ATTRIBUTE);
         String scheduleIdStr = (pathVariables != null) ? pathVariables.get("scheduleId") : null;
         if (scheduleIdStr == null || !scheduleIdStr.matches("^\\d+$")) {
             throw new ServiceException(ErrorCode.BAD_REQUEST);
@@ -40,17 +53,22 @@ public class QueueInterceptor implements HandlerInterceptor {
         }
         Long userId = requestContext.getActor().getId();
 
-        String activeQueueKey = WaitingQueueManager.generateQueueActiveKey(scheduleId);
-        Double score = redisTemplate.opsForZSet().score(activeQueueKey, userId.toString());
+        // 진입열에 유저가 있는지, 만료되지 않았는지 확인
+        RScoredSortedSet<String> activeSet = redissonClient.getScoredSortedSet(
+                WaitingQueueManager.generateQueueActiveKey(scheduleId));
+        Double score = activeSet.getScore(userId.toString());
         if (score == null || score < System.currentTimeMillis()) {
             throw new ServiceException(ErrorCode.QUEUE_SESSION_EXPIRED);
         }
 
-        String storedToken = redisTemplate.opsForValue()
-                .get(WaitingQueueManager.generateActiveTokenKey(scheduleId, userId));
+        // 발급된 토큰과 일치하는지 확인
+        RBucket<String> tokenBucket = redissonClient.getBucket(
+                WaitingQueueManager.generateActiveTokenKey(scheduleId, userId));
+        String storedToken = tokenBucket.get();
         if (!token.equals(storedToken)) {
             throw new ServiceException(ErrorCode.QUEUE_SESSION_EXPIRED);
         }
+
         return true;
     }
 }

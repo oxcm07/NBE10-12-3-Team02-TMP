@@ -44,11 +44,11 @@ dependencies {
     implementation("io.jsonwebtoken:jjwt-api:0.13.0")
     runtimeOnly("io.jsonwebtoken:jjwt-impl:0.13.0")
     runtimeOnly("io.jsonwebtoken:jjwt-jackson:0.13.0")
-    // Redis
-    implementation("org.springframework.boot:spring-boot-starter-data-redis")
+    // Redisson (Sentinel, Delayed Queue, RScript 통합 클라이언트) - Spring Boot 4.0 호환 버전
+    implementation("org.redisson:redisson-spring-boot-starter:4.6.1")
     // OAuth2
     implementation("org.springframework.boot:spring-boot-starter-oauth2-client")
-    testImplementation("org.springframework.boot:spring-boot-starter-data-redis-test")
+    testImplementation("org.springframework.boot:spring-boot-starter-test")
     testImplementation("com.github.codemonstur:embedded-redis:1.4.3")
     //WebSocket
     implementation("org.springframework.boot:spring-boot-starter-websocket")

@@ -10,30 +10,28 @@ import com.back.domain.schedule.repository.ScheduleRepository;
 import com.back.domain.schedule.repository.ScheduleSeatRepository;
 import com.back.domain.venue.entity.Venue;
 import com.back.domain.venue.repository.VenueRepository;
+import com.back.global.RedisTestConfig;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+import org.redisson.api.RedissonClient;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.data.redis.core.StringRedisTemplate;
-import org.springframework.data.redis.core.script.RedisScript;
+import org.springframework.context.annotation.Import;
 import org.springframework.test.context.ActiveProfiles;
-import org.springframework.test.context.bean.override.mockito.MockitoSpyBean;
 
 import java.time.LocalDateTime;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.anyList;
-import static org.mockito.Mockito.doAnswer;
 
 @ActiveProfiles("test")
 @SpringBootTest
-@org.springframework.context.annotation.Import(com.back.global.RedisTestConfig.class)
+@Import(RedisTestConfig.class)
 class ConcertServiceTest {
     @Autowired
     private SeatOccupyManager seatOccupyManager;
@@ -47,9 +45,8 @@ class ConcertServiceTest {
     private ScheduleSeatRepository scheduleSeatRepository;
     @Autowired
     private ConcertDeatilRepository concertDeatilRepository;
-
-    @MockitoSpyBean
-    private StringRedisTemplate redisTemplate;
+    @Autowired
+    private RedissonClient redissonClient;
 
     private Concert concert;
     private Schedule schedule;
@@ -74,21 +71,9 @@ class ConcertServiceTest {
             }
         }
 
-        java.util.Set<String> keys = redisTemplate.keys("seat:occupy:" + concert.getConcertId() + ":" + schedule.getScheduleId() + ":*");
-        if (keys != null && !keys.isEmpty()) {
-            redisTemplate.delete(keys);
-        }
-
-        doAnswer(invocation -> {
-            Thread.sleep(10);
-            return invocation.callRealMethod();
-        }).when(redisTemplate).execute(
-                any(RedisScript.class),
-                anyList(),
-                any(Object.class),
-                any(Object.class),
-                any(Object.class)
-        );
+        // 이전 테스트의 Redis 선점 키 정리
+        String pattern = "seat:occupy:" + concert.getConcertId() + ":" + schedule.getScheduleId() + ":*";
+        redissonClient.getKeys().deleteByPattern(pattern);
     }
 
     @Test
@@ -147,7 +132,7 @@ class ConcertServiceTest {
                 });
             }
             startLatch.countDown();
-            doneLatch.await(10, java.util.concurrent.TimeUnit.SECONDS);
+            doneLatch.await(10, TimeUnit.SECONDS);
         } finally {
             executorService.shutdownNow();
         }
@@ -164,7 +149,7 @@ class ConcertServiceTest {
         assertThat(failCount.get()).isEqualTo(threadCount - 1);
 
         ScheduleSeat updatedSeat = scheduleSeatRepository.findById(seat.getConcertSeatPriceId()).orElseThrow();
-        assertThat(updatedSeat.getSeatStatus()).isEqualTo(SeatStatus.AVAILABLE);
+        assertThat(updatedSeat.getSeatStatus()).isEqualTo(SeatStatus.HOLD);
     }
 
     @Test
