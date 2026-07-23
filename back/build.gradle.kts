@@ -3,7 +3,6 @@ plugins {
     kotlin("jvm") version "2.1.21"
     kotlin("plugin.spring") version "2.1.21"
     kotlin("plugin.jpa") version "2.1.21"
-    kotlin("plugin.lombok") version "2.1.21"
     id("org.springframework.boot") version "4.0.7"
     id("io.spring.dependency-management") version "1.1.7"
 }
@@ -39,6 +38,7 @@ dependencies {
     implementation("com.bucket4j:bucket4j_jdk17-core:8.14.0") // bucket4j
     implementation("com.github.ben-manes.caffeine:caffeine") // caffeine
     implementation("org.jetbrains.kotlin:kotlin-reflect")
+    implementation("com.fasterxml.jackson.module:jackson-module-kotlin")
     developmentOnly("org.springframework.boot:spring-boot-devtools")
     runtimeOnly("com.h2database:h2")
     runtimeOnly("com.mysql:mysql-connector-j")
@@ -46,9 +46,6 @@ dependencies {
     testImplementation("org.springframework.boot:spring-boot-starter-validation-test")
     testImplementation("org.springframework.boot:spring-boot-starter-webmvc-test")
     testRuntimeOnly("org.junit.platform:junit-platform-launcher")
-    // lombok
-    compileOnly("org.projectlombok:lombok")
-    annotationProcessor("org.projectlombok:lombok")
     // security
     implementation("org.springframework.boot:spring-boot-starter-security")
     testImplementation("org.springframework.boot:spring-boot-starter-security-test")
