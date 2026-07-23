@@ -85,7 +85,7 @@ class OAuth2LoginIntegrationTest {
         )
 
         `when`(userRepository.findByUserIdAndDeletedAtIsNull(1L))
-            .thenReturn(Optional.of(user))
+            .thenReturn(user)
 
         `when`(authService.issueTokens(user))
             .thenReturn(TokenResponse("access-token", "refresh-token"))

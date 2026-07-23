@@ -101,7 +101,7 @@ class SecurityConfig(
                                     ErrorCode.AUTH_LOGIN_REQUIRED.message
                                 ),
                                 "{\"resultCode\":\"401-1\",\"msg\":\"로그인 후 이용해주세요.\",\"data\":null}"
-                            )!!
+                            )
                         )
                     }
                     .accessDeniedHandler { _, response, _ ->
@@ -114,7 +114,7 @@ class SecurityConfig(
                                     ErrorCode.AUTH_FORBIDDEN.message
                                 ),
                                 "{\"resultCode\":\"403-1\",\"msg\":\"권한이 없습니다.\",\"data\":null}"
-                            )!!
+                            )
                         )
                     }
             }

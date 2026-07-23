@@ -30,7 +30,7 @@ class AuthService(
 
     fun login(id: String, password: String): TokenResponse {
         val user = userRepository.findByLoginIdAndDeletedAtIsNull(id)
-            .orElseThrow { ServiceException(ErrorCode.USER_NOT_FOUND) }
+            ?: throw ServiceException(ErrorCode.USER_NOT_FOUND)
 
         if (!passwordEncoder.matches(password, user.password)) {
             throw ServiceException(ErrorCode.AUTH_PASSWORD_MISMATCH)
@@ -49,7 +49,7 @@ class AuthService(
             ?: throw ServiceException(ErrorCode.AUTH_INVALID_REFRESH_TOKEN)
 
         val user = userRepository.findByUserIdAndDeletedAtIsNull(payload.userId)
-            .orElseThrow { ServiceException(ErrorCode.USER_NOT_FOUND) }
+            ?: throw ServiceException(ErrorCode.USER_NOT_FOUND)
 
         val requestRefreshTokenHash = TokenHashUtil.sha256(refreshToken)
         val newAccessToken = jwtTokenProvider.createAccessToken(user)
@@ -87,7 +87,7 @@ class AuthService(
         handleValidationFailure(result, payload.userId)
 
         val user = userRepository.findByUserIdAndDeletedAtIsNull(payload.userId)
-            .orElseThrow { ServiceException(ErrorCode.USER_NOT_FOUND) }
+            ?: throw ServiceException(ErrorCode.USER_NOT_FOUND)
 
         return jwtTokenProvider.createAccessToken(user)
     }

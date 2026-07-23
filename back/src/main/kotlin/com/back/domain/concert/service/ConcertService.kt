@@ -95,7 +95,7 @@ class ConcertService(
     fun validateSeatAvailable(scheduleId: Long, seatNumber: String) {
         val seat = scheduleSeatRepository
             .findWithLockByScheduleIdAndSeatNumber(scheduleId, seatNumber)
-            .orElseThrow { ServiceException(ErrorCode.SEAT_NOT_FOUND) }
+            ?: throw ServiceException(ErrorCode.SEAT_NOT_FOUND)
 
         if (seat.seatStatus == SeatStatus.SOLD_OUT) {
             throw ServiceException(ErrorCode.SEAT_ALREADY_SOLD)
@@ -107,7 +107,7 @@ class ConcertService(
 
     fun validateConcertScheduleMatch(concertId: Long, scheduleId: Long) {
         scheduleRepository.findByScheduleIdAndConcert_ConcertId(scheduleId, concertId)
-            .orElseThrow { ServiceException(ErrorCode.INVALID_CONCERT_SCHEDULE) }
+            ?: throw ServiceException(ErrorCode.INVALID_CONCERT_SCHEDULE)
     }
 
     fun convertToPriceMap(scheduleSeats: List<ScheduleSeat>): Map<String, Int> {

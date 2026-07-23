@@ -42,7 +42,7 @@ class CustomAuthenticationFilter(
                 Ut.json.toString(
                     rsData,
                     "{\"resultCode\":\"500-1\",\"msg\":\"JSON 변환 실패\",\"data\":null}"
-                )!!
+                )
             )
         }
     }

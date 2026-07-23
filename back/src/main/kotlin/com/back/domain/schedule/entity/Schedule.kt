@@ -11,8 +11,7 @@ open class Schedule protected constructor() : BaseEntity() {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
-    var scheduleId: Long? = null
-        protected set
+    val scheduleId: Long? = null
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "concert_id", nullable = false)

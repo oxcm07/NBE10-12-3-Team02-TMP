@@ -41,11 +41,11 @@ class TicketService(
     @Transactional
     fun createTicket(userId: Long, scheduleId: Long, request: PaymentTicketRequest): List<PaymentTicketResponse> {
         val user = userRepository.findByUserIdAndDeletedAtIsNull(userId)
-            .orElseThrow { ServiceException(ErrorCode.USER_NOT_FOUND) }
+            ?: throw ServiceException(ErrorCode.USER_NOT_FOUND)
 
         val schedule = scheduleRepository
             .findByScheduleIdAndConcert_ConcertId(scheduleId, request.concertId)
-            .orElseThrow { ServiceException(ErrorCode.INVALID_CONCERT_SCHEDULE) }
+            ?: throw ServiceException(ErrorCode.INVALID_CONCERT_SCHEDULE)
 
         val alreadyPurchasedCount = ticketRepository
             .countByUser_UserIdAndSchedule_ScheduleIdAndIsValidTrue(userId, scheduleId)
@@ -59,7 +59,7 @@ class TicketService(
         for (holdInfo in sortedSeatHolds) {
             val scheduleSeat = scheduleSeatRepository
                 .findWithLockByScheduleIdAndSeatNumber(scheduleId, holdInfo.seatNumber)
-                .orElseThrow { ServiceException(ErrorCode.SEAT_NOT_FOUND) }
+                ?: throw ServiceException(ErrorCode.SEAT_NOT_FOUND)
 
             if (scheduleSeat.seatStatus == SeatStatus.SOLD_OUT) {
                 throw ServiceException(ErrorCode.SEAT_ALREADY_SOLD)
@@ -104,7 +104,7 @@ class TicketService(
     @Transactional
     fun cancelTicket(userId: Long, ticketId: Long) {
         val ticket = ticketRepository.findByTicketIdAndUser_UserId(ticketId, userId)
-            .orElseThrow { ServiceException(ErrorCode.TICKET_NOT_FOUND_FOR_USER) }
+            ?: throw ServiceException(ErrorCode.TICKET_NOT_FOUND_FOR_USER)
 
         if (!ticket.isValid) {
             throw ServiceException(ErrorCode.TICKET_ALREADY_CANCELLED)
@@ -131,7 +131,7 @@ class TicketService(
 
     fun verifyTicket(qrToken: String): TicketVerifyResponse {
         val ticket = ticketRepository.findByQrTokenWithDetails(qrToken)
-            .orElseThrow { ServiceException(ErrorCode.TICKET_NOT_FOUND) }
+            ?: throw ServiceException(ErrorCode.TICKET_NOT_FOUND)
         return TicketVerifyResponse.from(ticket)
     }
 

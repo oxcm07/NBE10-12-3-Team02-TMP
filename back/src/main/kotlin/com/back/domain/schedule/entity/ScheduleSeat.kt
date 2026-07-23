@@ -8,8 +8,7 @@ class ScheduleSeat protected constructor() : BaseEntity() {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
-    var concertSeatPriceId: Long? = null
-        protected set
+    val concertSeatPriceId: Long? = null
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "schedule_id", nullable = false)

@@ -5,11 +5,10 @@ import com.back.domain.user.entity.User
 import org.springframework.data.jpa.repository.JpaRepository
 import org.springframework.data.jpa.repository.Query
 import org.springframework.data.repository.query.Param
-import java.util.Optional
 
 interface TicketRepository : JpaRepository<Ticket, Long> {
 
-    fun findByTicketIdAndUser_UserId(ticketId: Long, userId: Long): Optional<Ticket>
+    fun findByTicketIdAndUser_UserId(ticketId: Long, userId: Long): Ticket?
 
     @Query("""
         SELECT t FROM Ticket t
@@ -30,5 +29,5 @@ interface TicketRepository : JpaRepository<Ticket, Long> {
         JOIN FETCH t.scheduleSeat
         WHERE t.qrToken = :qrToken
     """)
-    fun findByQrTokenWithDetails(@Param("qrToken") qrToken: String): Optional<Ticket>
+    fun findByQrTokenWithDetails(@Param("qrToken") qrToken: String): Ticket?
 }

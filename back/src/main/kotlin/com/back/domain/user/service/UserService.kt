@@ -49,11 +49,12 @@ class UserService(
         if (userRepository.existsByEmailAndDeletedAtIsNull(email)) {
             throw ServiceException(ErrorCode.USER_EMAIL_ALREADY_EXISTS)
         }
+        val encodedPassword = requireNotNull(passwordEncoder.encode(password)) { "Password encoding failed" }
         val user = userRepository.save(
             User.create(
                 loginId = id,
                 email = email,
-                password = passwordEncoder.encode(password)!!,
+                password = encodedPassword,
                 name = name,
                 loginType = LoginType.NORMAL
             )
@@ -65,7 +66,7 @@ class UserService(
     fun withdraw(userId: Long, authorization: String) {
         val accessToken = bearerTokenExtractor.extract(authorization)
         val user = userRepository.findByUserIdAndDeletedAtIsNull(userId)
-            .orElseThrow { ServiceException(ErrorCode.USER_NOT_FOUND_OR_DELETED) }
+            ?: throw ServiceException(ErrorCode.USER_NOT_FOUND_OR_DELETED)
 
         if (user.loginType != LoginType.NORMAL) {
             oAuthUnlinkService.unlink(user.loginType, user.oauthRefreshToken)
@@ -100,7 +101,7 @@ class UserService(
 
     fun getMyPage(userId: Long): MyPageResponse {
         val user = userRepository.findByUserIdAndDeletedAtIsNull(userId)
-            .orElseThrow { ServiceException(ErrorCode.USER_NOT_FOUND) }
+            ?: throw ServiceException(ErrorCode.USER_NOT_FOUND)
 
         val ticketGroups = ticketRepository.findAllByUserWithConcert(user)
             .groupBy { it.schedule.scheduleId }
@@ -113,7 +114,7 @@ class UserService(
     @Transactional
     fun updateMyPage(userId: Long, request: UpdateMyPageRequest) {
         val user = userRepository.findByUserIdAndDeletedAtIsNull(userId)
-            .orElseThrow { ServiceException(ErrorCode.USER_NOT_FOUND) }
+            ?: throw ServiceException(ErrorCode.USER_NOT_FOUND)
 
         val name = request.name
         if (name != null) {
@@ -134,7 +135,8 @@ class UserService(
 
         val password = request.password
         if (password != null) {
-            user.updatePassword(passwordEncoder.encode(password)!!)
+            val encoded = requireNotNull(passwordEncoder.encode(password)) { "Password encoding failed" }
+            user.updatePassword(encoded)
         }
     }
 

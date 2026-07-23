@@ -77,16 +77,17 @@ class CustomOAuth2UserService(
         validateRequired(platformId, "oauth2_provider_id_missing")
         validateRequired(email, "oauth2_email_missing")
 
-        val safeEmail = email!!
+        val safeEmail = email ?: throw OAuth2AuthenticationException("oauth2_email_missing")
 
-        return userRepository.findByLoginIdAndDeletedAtIsNull(loginId)
-            .map { user ->
-                if (refreshToken.isNotBlank()) {
-                    user.updateOauthRefreshToken(refreshToken)
-                }
-                user
+        val existingUser = userRepository.findByLoginIdAndDeletedAtIsNull(loginId)
+        if (existingUser != null) {
+            if (refreshToken.isNotBlank()) {
+                existingUser.updateOauthRefreshToken(refreshToken)
             }
-            .orElseGet { createOAuthUser(loginId, safeEmail, name, loginType, refreshToken) }
+            return existingUser
+        }
+
+        return createOAuthUser(loginId, safeEmail, name, loginType, refreshToken)
     }
 
     private fun createOAuthUser(
@@ -100,7 +101,8 @@ class CustomOAuth2UserService(
             throw OAuth2AuthenticationException("oauth2_email_already_exists")
         }
 
-        val randomPassword = passwordEncoder.encode(UUID.randomUUID().toString())!!
+        val encodedPassword = passwordEncoder.encode(UUID.randomUUID().toString())
+        val randomPassword = requireNotNull(encodedPassword) { "Password encoding failed" }
 
         val user = User.createOAuth(
             loginId = loginId,

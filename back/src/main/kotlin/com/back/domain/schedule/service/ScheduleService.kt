@@ -21,7 +21,7 @@ class ScheduleService(
     fun showSchedule(concertId: Long, scheduleId: Long): ShowScheduleResponse {
         val schedule = scheduleRepository
             .findByScheduleIdAndConcert_ConcertId(scheduleId, concertId)
-            .orElseThrow { ServiceException(ErrorCode.CONCERT_NOT_FOUND_OR_MISMATCH) }
+            ?: throw ServiceException(ErrorCode.CONCERT_NOT_FOUND_OR_MISMATCH)
 
         val remainingSeats = scheduleSeatRepository
             .countBySchedule_ScheduleIdAndSeatStatus(scheduleId, SeatStatus.AVAILABLE)
@@ -41,8 +41,9 @@ class ScheduleService(
         }
 
         return schedules.map { schedule ->
+            val scheduleId = checkNotNull(schedule.scheduleId) { "Schedule ID must not be null" }
             val remainingSeats = scheduleSeatRepository
-                .countBySchedule_ScheduleIdAndSeatStatus(schedule.scheduleId!!, SeatStatus.AVAILABLE)
+                .countBySchedule_ScheduleIdAndSeatStatus(scheduleId, SeatStatus.AVAILABLE)
             ShowScheduleListResponse.of(schedule, remainingSeats)
         }
     }

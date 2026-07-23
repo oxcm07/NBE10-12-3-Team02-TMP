@@ -55,7 +55,7 @@ class SeatOccupyManager(
         try {
             val seat = scheduleSeatRepository
                 .findWithLockByScheduleIdAndSeatNumber(scheduleId, seatNumber)
-                .orElseThrow { ServiceException(ErrorCode.SEAT_NOT_FOUND) }
+                ?: throw ServiceException(ErrorCode.SEAT_NOT_FOUND)
 
             if (seat.seatStatus == SeatStatus.SOLD_OUT) {
                 cleanupRedis(redisKey, indexKey, seatNumber)
@@ -96,13 +96,10 @@ class SeatOccupyManager(
 
         cleanupRedis(redisKey, generateSeatOccupyIndexKey(concertId, scheduleId), seatNumber)
 
-        scheduleSeatRepository
-            .findWithLockByScheduleIdAndSeatNumber(scheduleId, seatNumber)
-            .ifPresent { seat ->
-                if (seat.seatStatus == SeatStatus.HOLD) {
-                    seat.updateSeatStatus(SeatStatus.AVAILABLE)
-                }
-            }
+        val seat = scheduleSeatRepository.findWithLockByScheduleIdAndSeatNumber(scheduleId, seatNumber)
+        if (seat?.seatStatus == SeatStatus.HOLD) {
+            seat.updateSeatStatus(SeatStatus.AVAILABLE)
+        }
     }
 
     @Transactional(readOnly = true)

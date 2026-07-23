@@ -23,9 +23,9 @@ class SeatHoldExpiredProcessor(
     fun processExpiredSeat(concertId: Long, scheduleId: Long, seatNumber: String) {
         log.debug("좌석 선점 만료 처리: concertId={}, scheduleId={}, seat={}", concertId, scheduleId, seatNumber)
 
-        val optSeat = scheduleSeatRepository.findWithLockByScheduleIdAndSeatNumber(scheduleId, seatNumber)
+        val seat = scheduleSeatRepository.findWithLockByScheduleIdAndSeatNumber(scheduleId, seatNumber)
 
-        optSeat.ifPresent { seat ->
+        if (seat != null) {
             if (seat.seatStatus == SeatStatus.HOLD) {
                 seat.updateSeatStatus(SeatStatus.AVAILABLE)
                 log.info("좌석 복구 완료 (HOLD → AVAILABLE): scheduleId={}, seat={}", scheduleId, seatNumber)

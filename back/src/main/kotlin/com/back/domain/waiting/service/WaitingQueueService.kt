@@ -148,6 +148,6 @@ class WaitingQueueService(
 
     private fun validateUser(userId: Long) {
         userRepository.findByUserIdAndDeletedAtIsNull(userId)
-            .orElseThrow { ServiceException(ErrorCode.USER_NOT_FOUND) }
+            ?: throw ServiceException(ErrorCode.USER_NOT_FOUND)
     }
 }

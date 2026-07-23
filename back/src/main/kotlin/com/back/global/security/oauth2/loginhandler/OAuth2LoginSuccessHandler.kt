@@ -38,7 +38,7 @@ class OAuth2LoginSuccessHandler(
             return
         }
 
-        val user = userRepository.findByUserIdAndDeletedAtIsNull(userId).orElse(null)
+        val user = userRepository.findByUserIdAndDeletedAtIsNull(userId)
         if (user == null) {
             redirectHandler.redirectFailure(response, "oauth2_user_not_found")
             return

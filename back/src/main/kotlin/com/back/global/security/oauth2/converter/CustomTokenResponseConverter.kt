@@ -29,9 +29,9 @@ class CustomTokenResponseConverter : Converter<Map<String, Any>, OAuth2AccessTok
             }
         }
 
-        if (tokenResponseParameters.containsKey(OAuth2ParameterNames.REFRESH_TOKEN)) {
-            additionalParameters[OAuth2ParameterNames.REFRESH_TOKEN] =
-                tokenResponseParameters[OAuth2ParameterNames.REFRESH_TOKEN]!!
+        val refreshTokenObj = tokenResponseParameters[OAuth2ParameterNames.REFRESH_TOKEN]
+        if (refreshTokenObj != null) {
+            additionalParameters[OAuth2ParameterNames.REFRESH_TOKEN] = refreshTokenObj
         }
 
         val builder = OAuth2AccessTokenResponse.withToken(accessToken)
@@ -40,8 +40,8 @@ class CustomTokenResponseConverter : Converter<Map<String, Any>, OAuth2AccessTok
             .scopes(scopes)
             .additionalParameters(additionalParameters)
 
-        if (tokenResponseParameters.containsKey(OAuth2ParameterNames.REFRESH_TOKEN)) {
-            builder.refreshToken(tokenResponseParameters[OAuth2ParameterNames.REFRESH_TOKEN] as String)
+        if (refreshTokenObj is String) {
+            builder.refreshToken(refreshTokenObj)
         }
 
         return builder.build()

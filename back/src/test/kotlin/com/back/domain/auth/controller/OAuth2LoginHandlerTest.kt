@@ -91,7 +91,7 @@ class OAuth2LoginHandlerTest {
             LoginType.GOOGLE
         )
 
-        `when`(userRepository.findByUserIdAndDeletedAtIsNull(1L)).thenReturn(Optional.of(user))
+        `when`(userRepository.findByUserIdAndDeletedAtIsNull(1L)).thenReturn(user)
         `when`(authService.issueTokens(user)).thenReturn(TokenResponse("access-token", "refresh-token"))
 
         val response = MockHttpServletResponse()
@@ -151,7 +151,7 @@ class OAuth2LoginHandlerTest {
     @DisplayName("OAuth2 로그인 성공 핸들러 - 회원 조회 실패 시 실패 redirect")
     fun t6() {
         val userRepository = mock(UserRepository::class.java)
-        `when`(userRepository.findByUserIdAndDeletedAtIsNull(1L)).thenReturn(Optional.empty())
+        `when`(userRepository.findByUserIdAndDeletedAtIsNull(1L)).thenReturn(null)
 
         val successHandler = successHandler(
             userRepository,
@@ -178,7 +178,7 @@ class OAuth2LoginHandlerTest {
         val requestContext = mock(RequestContext::class.java)
         val user = User.create("GOOGLE_google-sub", "google@test.com", "encoded-password", "구글유저", LoginType.GOOGLE)
 
-        `when`(userRepository.findByUserIdAndDeletedAtIsNull(1L)).thenReturn(Optional.of(user))
+        `when`(userRepository.findByUserIdAndDeletedAtIsNull(1L)).thenReturn(user)
         `when`(authService.issueTokens(user)).thenThrow(RuntimeException("redis down"))
 
         val successHandler = successHandler(userRepository, authService, requestContext)
