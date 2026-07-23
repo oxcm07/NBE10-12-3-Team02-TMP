@@ -190,7 +190,7 @@ class OAuth2LoginHandlerTest {
             authentication(oAuth2User(mapOf("userId" to 1L)))
         )
 
-        verify(requestContext, never()).setCookie(anyString(), anyString(), anyString())
+        verify(requestContext, never()).setCookie(anyString() ?: "", anyString() ?: "", anyString() ?: "")
         assertThat(response.status).isEqualTo(302)
         assertThat(response.redirectedUrl).isEqualTo("http://localhost:3000/login?error=oauth2_token_issue_failed")
     }

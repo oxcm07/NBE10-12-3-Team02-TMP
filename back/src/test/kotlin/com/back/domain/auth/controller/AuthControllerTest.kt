@@ -101,11 +101,11 @@ class AuthControllerTest @Autowired constructor(
         `when`(
             refreshTokenRepository.rotate(
                 anyLong(),
-                anyString(),
-                anyString(),
-                anyString(),
-                anyString(),
-                any(Duration::class.java)
+                anyString() ?: "",
+                anyString() ?: "",
+                anyString() ?: "",
+                anyString() ?: "",
+                anyNonNull()
             )
         ).thenReturn(RefreshTokenValidationResult.SUCCESS)
 
@@ -163,7 +163,7 @@ class AuthControllerTest @Autowired constructor(
             .andExpect(cookie().maxAge("refreshToken", 0))
             .andExpect(jsonPath("$.resultCode").value("200-1"))
 
-        verify(blacklistRepository).add(eq(accessToken), any(Duration::class.java))
+        verify(blacklistRepository).add(eq(accessToken) ?: "", anyNonNull())
     }
 
     private fun loginAndGetRefreshTokenCookie(): Cookie {
@@ -193,5 +193,11 @@ class AuthControllerTest @Autowired constructor(
     companion object {
         private const val LOGIN_ID = "testuser"
         private const val PASSWORD = "q1w2e3r4"
+
+        @Suppress("UNCHECKED_CAST")
+        private fun <T> anyNonNull(): T {
+            any<T>()
+            return null as T
+        }
     }
 }
