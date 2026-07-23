@@ -12,25 +12,25 @@ open class Schedule protected constructor() : BaseEntity() {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     var scheduleId: Long? = null
-        private set
+        protected set
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "concert_id", nullable = false)
     lateinit var concert: Concert
-        private set
+        protected set
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "venue_id", nullable = false)
     lateinit var venue: Venue
-        private set
+        protected set
 
     @Column(nullable = false)
     lateinit var scheduleDate: LocalDateTime
-        private set
+        protected set
 
     @Column(nullable = false)
     var round: Int = 0
-        private set
+        protected set
 
     private constructor(
         concert: Concert,

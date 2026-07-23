@@ -9,29 +9,29 @@ class ScheduleSeat protected constructor() : BaseEntity() {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     var concertSeatPriceId: Long? = null
-        private set
+        protected set
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "schedule_id", nullable = false)
     lateinit var schedule: Schedule
-        private set
+        protected set
 
     @Column(nullable = false)
     lateinit var gradeName: String
-        private set
+        protected set
 
     @Column(nullable = false)
     lateinit var seatNumber: String
-        private set
+        protected set
 
     @Column(nullable = false)
     var seatPrice: Int = 0
-        private set
+        protected set
 
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
     lateinit var seatStatus: SeatStatus
-        private set
+        protected set
 
     private constructor(
         schedule: Schedule,
