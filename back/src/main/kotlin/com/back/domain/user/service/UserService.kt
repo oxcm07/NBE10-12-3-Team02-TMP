@@ -1,7 +1,6 @@
 package com.back.domain.user.service
 
 import com.back.domain.schedule.entity.SeatStatus
-import com.back.domain.ticket.entity.Ticket
 import com.back.domain.ticket.event.TicketCancelledEvent
 import com.back.domain.ticket.repository.TicketRepository
 import com.back.domain.user.dto.*
@@ -39,18 +38,23 @@ class UserService(
 
     @Transactional
     fun signup(request: SignupRequest): SignupResponse {
-        if (userRepository.existsByLoginIdAndDeletedAtIsNull(request.id)) {
+        val id = request.id
+        val email = request.email
+        val password = request.password
+        val name = request.name
+
+        if (userRepository.existsByLoginIdAndDeletedAtIsNull(id)) {
             throw ServiceException(ErrorCode.USER_ID_ALREADY_EXISTS)
         }
-        if (userRepository.existsByEmailAndDeletedAtIsNull(request.email)) {
+        if (userRepository.existsByEmailAndDeletedAtIsNull(email)) {
             throw ServiceException(ErrorCode.USER_EMAIL_ALREADY_EXISTS)
         }
         val user = userRepository.save(
             User.create(
-                loginId = request.id,
-                email = request.email,
-                password = passwordEncoder.encode(request.password),
-                name = request.name,
+                loginId = id,
+                email = email,
+                password = passwordEncoder.encode(password),
+                name = name,
                 loginType = LoginType.NORMAL
             )
         )
@@ -111,23 +115,26 @@ class UserService(
         val user = userRepository.findByUserIdAndDeletedAtIsNull(userId)
             .orElseThrow { ServiceException(ErrorCode.USER_NOT_FOUND) }
 
-        if (request.name != null) {
-            val trimmed = request.name.trim()
+        val name = request.name
+        if (name != null) {
+            val trimmed = name.trim()
             if (trimmed.isEmpty() || trimmed.contains(" ")) {
                 throw ServiceException(ErrorCode.USER_NAME_INVALID)
             }
             user.updateName(trimmed)
         }
 
-        if (request.email != null) {
-            if (user.email != request.email && userRepository.existsByEmailAndDeletedAtIsNull(request.email)) {
+        val email = request.email
+        if (email != null) {
+            if (user.email != email && userRepository.existsByEmailAndDeletedAtIsNull(email)) {
                 throw ServiceException(ErrorCode.USER_EMAIL_ALREADY_EXISTS)
             }
-            user.updateEmail(request.email)
+            user.updateEmail(email)
         }
 
-        if (request.password != null) {
-            user.updatePassword(passwordEncoder.encode(request.password))
+        val password = request.password
+        if (password != null) {
+            user.updatePassword(passwordEncoder.encode(password))
         }
     }
 

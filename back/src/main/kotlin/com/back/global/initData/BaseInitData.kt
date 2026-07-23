@@ -19,7 +19,7 @@ class BaseInitData(
 ) : CommandLineRunner {
 
     @Transactional
-    override fun run(vararg args: String?) {
+    override fun run(vararg args: String) {
         if (concertRepository.count() > 0) {
             return
         }

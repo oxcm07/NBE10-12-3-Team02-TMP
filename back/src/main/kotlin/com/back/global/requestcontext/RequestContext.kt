@@ -17,8 +17,8 @@ class RequestContext(
     @Value("\${custom.cookie.same-site:Lax}") private val cookieSameSite: String,
     @Value("\${custom.jwt.refreshToken.expirationSeconds}") private val refreshTokenExpireSeconds: Int
 ) {
-    private fun req(): HttpServletRequest = reqProvider.object
-    private fun resp(): HttpServletResponse = respProvider.object
+    private fun req(): HttpServletRequest = reqProvider.getObject()
+    private fun resp(): HttpServletResponse = respProvider.getObject()
 
     val actor: SecurityUser?
         get() = SecurityContextHolder.getContext().authentication?.principal as? SecurityUser

@@ -72,10 +72,12 @@ class CustomOAuth2UserService(
         val platformId = userInfo.providerId
         val loginId = "${loginType.name}_$platformId"
         val email = userInfo.email
-        val name = userInfo.name
+        val name = userInfo.name ?: ""
 
         validateRequired(platformId, "oauth2_provider_id_missing")
         validateRequired(email, "oauth2_email_missing")
+
+        val safeEmail = email!!
 
         return userRepository.findByLoginIdAndDeletedAtIsNull(loginId)
             .map { user ->
@@ -84,7 +86,7 @@ class CustomOAuth2UserService(
                 }
                 user
             }
-            .orElseGet { createOAuthUser(loginId, email!!, name, loginType, refreshToken) }
+            .orElseGet { createOAuthUser(loginId, safeEmail, name, loginType, refreshToken) }
     }
 
     private fun createOAuthUser(

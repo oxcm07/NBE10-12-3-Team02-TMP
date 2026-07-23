@@ -22,7 +22,7 @@ class QueueInterceptor(
         response: HttpServletResponse,
         handler: Any
     ): Boolean {
-        if ("DELETE".equalsIgnoreCase(request.method)) {
+        if ("DELETE".equals(request.method, ignoreCase = true)) {
             return true
         }
 

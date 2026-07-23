@@ -69,7 +69,7 @@ class ConcertService(
 
         val detailUrlList = concertDeatilRepository
             .findByConcertConcertId(concertId)
-            .map { it.urlDetail }
+            .mapNotNull { it.urlDetail }
 
         val scheduleId = schedule.scheduleId ?: throw IllegalStateException("Schedule ID null")
         val scheduleSeats = scheduleSeatRepository.findByScheduleScheduleId(scheduleId)
