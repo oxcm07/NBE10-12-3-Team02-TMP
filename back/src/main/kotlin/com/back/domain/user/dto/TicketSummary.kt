@@ -13,20 +13,15 @@ data class TicketSummary(
     val createdAt: String
 ) {
     companion object {
-        fun from(ticket: Ticket): TicketSummary {
-            val ticketId = ticket.ticketId ?: throw IllegalArgumentException("Ticket ID null")
-            val createDate = ticket.createDate ?: throw IllegalArgumentException("Create date null")
-
-            return TicketSummary(
-                ticketId = ticketId,
-                ticketNumber = ticket.ticketNumber,
-                qrToken = ticket.qrToken,
-                seatNumber = ticket.scheduleSeat.seatNumber,
-                gradeName = ticket.scheduleSeat.gradeName,
-                ticketPrice = ticket.ticketPrice,
-                isValid = ticket.isValid,
-                createdAt = createDate.toLocalDate().toString()
-            )
-        }
+        fun from(ticket: Ticket): TicketSummary = TicketSummary(
+            ticketId = checkNotNull(ticket.ticketId) { "Ticket ID null" },
+            ticketNumber = ticket.ticketNumber,
+            qrToken = ticket.qrToken,
+            seatNumber = ticket.scheduleSeat.seatNumber,
+            gradeName = ticket.scheduleSeat.gradeName,
+            ticketPrice = ticket.ticketPrice,
+            isValid = ticket.isValid,
+            createdAt = checkNotNull(ticket.createDate) { "Create date null" }.toLocalDate().toString()
+        )
     }
 }

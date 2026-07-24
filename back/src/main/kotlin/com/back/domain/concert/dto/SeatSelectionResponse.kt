@@ -15,9 +15,7 @@ data class SeatSelectionResponse(
             scheduleId: Long,
             prices: Map<String, Int>,
             seats: List<SeatDetailResponse>
-        ): SeatSelectionResponse {
-            return SeatSelectionResponse(concertId, scheduleId, prices, seats)
-        }
+        ): SeatSelectionResponse = SeatSelectionResponse(concertId, scheduleId, prices, seats)
     }
 
     data class SeatDetailResponse(
@@ -26,13 +24,11 @@ data class SeatSelectionResponse(
         val gradeName: String
     ) {
         companion object {
-            fun from(scheduleSeat: ScheduleSeat): SeatDetailResponse {
-                return SeatDetailResponse(
-                    scheduleSeat.seatNumber,
-                    scheduleSeat.seatStatus,
-                    scheduleSeat.gradeName
-                )
-            }
+            fun from(scheduleSeat: ScheduleSeat): SeatDetailResponse = SeatDetailResponse(
+                scheduleSeat.seatNumber,
+                scheduleSeat.seatStatus,
+                scheduleSeat.gradeName
+            )
         }
     }
 }

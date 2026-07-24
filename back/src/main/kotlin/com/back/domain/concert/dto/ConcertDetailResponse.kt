@@ -21,19 +21,16 @@ data class ConcertDetailResponse(
             detailUrlList: List<String>,
             prices: Map<String, Int>,
             bookable: Boolean
-        ): ConcertDetailResponse {
-            val concertId = concert.concertId ?: throw IllegalArgumentException("Concert ID null")
-            return ConcertDetailResponse(
-                concertId = concertId,
-                concertName = concert.concertName,
-                description = concert.description,
-                venueName = venueName,
-                location = location,
-                urlPoster = concert.urlPoster,
-                detailUrlList = detailUrlList,
-                prices = prices,
-                bookable = bookable
-            )
-        }
+        ): ConcertDetailResponse = ConcertDetailResponse(
+            concertId = checkNotNull(concert.concertId) { "Concert ID null" },
+            concertName = concert.concertName,
+            description = concert.description,
+            venueName = venueName,
+            location = location,
+            urlPoster = concert.urlPoster,
+            detailUrlList = detailUrlList,
+            prices = prices,
+            bookable = bookable
+        )
     }
 }

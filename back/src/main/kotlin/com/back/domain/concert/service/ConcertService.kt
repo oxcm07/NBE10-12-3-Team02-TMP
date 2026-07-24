@@ -12,6 +12,7 @@ import com.back.domain.schedule.repository.ScheduleRepository
 import com.back.domain.schedule.repository.ScheduleSeatRepository
 import com.back.global.exception.ErrorCode
 import com.back.global.exception.ServiceException
+import org.springframework.data.repository.findByIdOrNull
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
 import java.time.LocalDate
@@ -27,41 +28,37 @@ class ConcertService(
 ) {
 
     fun getConcerts(keyword: String?, sort: ConcertSortType?, date: LocalDate?): List<ConcertListResponse> {
-        var concerts = concertRepository.findByKeyword(keyword)
-
+        val concerts = concertRepository.findByKeyword(keyword)
         val concertIds = concerts.mapNotNull { it.concertId }
-
         val schedules = scheduleRepository.findAllWithVenueByConcertIds(concertIds)
 
-        if (date != null) {
-            val concertIdsWithMatchingSchedule = schedules
-                .filter { it.scheduleDate.toLocalDate() == date }
+        val filteredConcerts = date?.let { targetDate ->
+            val matchingIds = schedules
+                .filter { it.scheduleDate.toLocalDate() == targetDate }
                 .mapNotNull { it.concert.concertId }
                 .toSet()
-
-            concerts = concerts.filter { concertIdsWithMatchingSchedule.contains(it.concertId) }
-        }
+            concerts.filter { matchingIds.contains(it.concertId) }
+        } ?: concerts
 
         val venueNameMap = schedules
             .mapNotNull { s -> s.concert.concertId?.let { cid -> cid to s.venue.venueName } }
             .toMap()
 
-        val comparator = if (sort == ConcertSortType.latest) {
-            compareByDescending<Concert> { it.startDate }
-        } else {
-            compareBy<Concert> { it.endDate }
+        val comparator = when (sort) {
+            ConcertSortType.latest -> compareByDescending<Concert> { it.startDate }
+            else -> compareBy<Concert> { it.endDate }
         }
 
-        return concerts.sortedWith(comparator)
+        return filteredConcerts.sortedWith(comparator)
             .map { concert ->
-                val venueName = venueNameMap[concert.concertId] ?: ""
+                val venueName = venueNameMap[concert.concertId].orEmpty()
                 ConcertListResponse.of(concert, venueName)
             }
     }
 
     fun getConcertDetail(concertId: Long): ConcertDetailResponse {
-        val concert = concertRepository.findById(concertId)
-            .orElseThrow { ServiceException(ErrorCode.CONCERT_NOT_FOUND) }
+        val concert = concertRepository.findByIdOrNull(concertId)
+            ?: throw ServiceException(ErrorCode.CONCERT_NOT_FOUND)
 
         val schedule = scheduleRepository.findWithVenueByConcertId(concertId)
             .firstOrNull()
@@ -71,10 +68,9 @@ class ConcertService(
             .findByConcertConcertId(concertId)
             .mapNotNull { it.urlDetail }
 
-        val scheduleId = schedule.scheduleId ?: throw IllegalStateException("Schedule ID null")
+        val scheduleId = checkNotNull(schedule.scheduleId) { "Schedule ID null" }
         val scheduleSeats = scheduleSeatRepository.findByScheduleScheduleId(scheduleId)
         val prices = convertToPriceMap(scheduleSeats)
-
         val bookable = concert.endDate.isAfter(LocalDateTime.now())
 
         return ConcertDetailResponse.of(
@@ -87,9 +83,8 @@ class ConcertService(
         )
     }
 
-    fun getScheduleSeats(scheduleId: Long): List<ScheduleSeat> {
-        return scheduleSeatRepository.findByScheduleScheduleId(scheduleId)
-    }
+    fun getScheduleSeats(scheduleId: Long): List<ScheduleSeat> =
+        scheduleSeatRepository.findByScheduleScheduleId(scheduleId)
 
     @Transactional
     fun validateSeatAvailable(scheduleId: Long, seatNumber: String) {
@@ -97,11 +92,10 @@ class ConcertService(
             .findWithLockByScheduleIdAndSeatNumber(scheduleId, seatNumber)
             ?: throw ServiceException(ErrorCode.SEAT_NOT_FOUND)
 
-        if (seat.seatStatus == SeatStatus.SOLD_OUT) {
-            throw ServiceException(ErrorCode.SEAT_ALREADY_SOLD)
-        }
-        if (seat.seatStatus == SeatStatus.HOLD) {
-            throw ServiceException(ErrorCode.SEAT_HELD_BY_OTHER_USER)
+        when (seat.seatStatus) {
+            SeatStatus.SOLD_OUT -> throw ServiceException(ErrorCode.SEAT_ALREADY_SOLD)
+            SeatStatus.HOLD -> throw ServiceException(ErrorCode.SEAT_HELD_BY_OTHER_USER)
+            else -> Unit
         }
     }
 
@@ -110,13 +104,12 @@ class ConcertService(
             ?: throw ServiceException(ErrorCode.INVALID_CONCERT_SCHEDULE)
     }
 
-    fun convertToPriceMap(scheduleSeats: List<ScheduleSeat>): Map<String, Int> {
-        return scheduleSeats.associate { it.gradeName to it.seatPrice }
-    }
+    fun convertToPriceMap(scheduleSeats: List<ScheduleSeat>): Map<String, Int> =
+        scheduleSeats.associate { it.gradeName to it.seatPrice }
 
     fun validateScheduleBookable(scheduleId: Long) {
-        val schedule = scheduleRepository.findById(scheduleId)
-            .orElseThrow { ServiceException(ErrorCode.CONCERT_SCHEDULE_EMPTY) }
+        val schedule = scheduleRepository.findByIdOrNull(scheduleId)
+            ?: throw ServiceException(ErrorCode.CONCERT_SCHEDULE_EMPTY)
 
         if (LocalDateTime.now().isAfter(schedule.scheduleDate)) {
             throw ServiceException(ErrorCode.EXPIRED_BOOKING_DEADLINE)

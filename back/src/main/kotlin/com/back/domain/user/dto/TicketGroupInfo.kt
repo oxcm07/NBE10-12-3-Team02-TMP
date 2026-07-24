@@ -14,12 +14,13 @@ data class TicketGroupInfo(
 ) {
     companion object {
         fun from(tickets: List<Ticket>): TicketGroupInfo {
-            val first = tickets[0]
+            require(tickets.isNotEmpty()) { "Tickets list must not be empty" }
+            val first = tickets.first()
             val schedule = first.schedule
             val concert = schedule.concert
 
             return TicketGroupInfo(
-                scheduleId = schedule.scheduleId ?: throw IllegalArgumentException("Schedule ID null"),
+                scheduleId = checkNotNull(schedule.scheduleId) { "Schedule ID null" },
                 concertName = concert.concertName,
                 urlPoster = concert.urlPoster,
                 startDate = concert.startDate.toLocalDate().toString(),

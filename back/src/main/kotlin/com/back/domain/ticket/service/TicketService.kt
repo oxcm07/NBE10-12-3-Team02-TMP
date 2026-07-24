@@ -55,20 +55,16 @@ class TicketService(
 
         val sortedSeatHolds = request.seatHolds.sortedBy { it.seatNumber }
 
-        val scheduleSeats = mutableListOf<ScheduleSeat>()
-        for (holdInfo in sortedSeatHolds) {
+        val scheduleSeats = sortedSeatHolds.map { holdInfo ->
             val scheduleSeat = scheduleSeatRepository
                 .findWithLockByScheduleIdAndSeatNumber(scheduleId, holdInfo.seatNumber)
                 ?: throw ServiceException(ErrorCode.SEAT_NOT_FOUND)
 
-            if (scheduleSeat.seatStatus == SeatStatus.SOLD_OUT) {
-                throw ServiceException(ErrorCode.SEAT_ALREADY_SOLD)
+            when (scheduleSeat.seatStatus) {
+                SeatStatus.SOLD_OUT -> throw ServiceException(ErrorCode.SEAT_ALREADY_SOLD)
+                SeatStatus.HOLD -> scheduleSeat
+                else -> throw ServiceException(ErrorCode.SEAT_HOLD_EXPIRED)
             }
-            if (scheduleSeat.seatStatus != SeatStatus.HOLD) {
-                throw ServiceException(ErrorCode.SEAT_HOLD_EXPIRED)
-            }
-
-            scheduleSeats.add(scheduleSeat)
         }
 
         validateSeatHold(userId, request.concertId, scheduleId, sortedSeatHolds)
@@ -76,12 +72,8 @@ class TicketService(
         scheduleSeats.forEach { it.updateSeatStatus(SeatStatus.SOLD_OUT) }
 
         for (holdInfo in sortedSeatHolds) {
-            val redisKey = SeatOccupyManager.generateSeatOccupyKey(
-                request.concertId, scheduleId, holdInfo.seatNumber
-            )
-            val indexKey = SeatOccupyManager.generateSeatOccupyIndexKey(
-                request.concertId, scheduleId
-            )
+            val redisKey = SeatOccupyManager.generateSeatOccupyKey(request.concertId, scheduleId, holdInfo.seatNumber)
+            val indexKey = SeatOccupyManager.generateSeatOccupyIndexKey(request.concertId, scheduleId)
             seatOccupyManager.cleanupRedis(redisKey, indexKey, holdInfo.seatNumber)
             cancelDelayedQueueMessage(request.concertId, scheduleId, holdInfo.seatNumber)
             sseEmitterRegistry.broadcast(scheduleId, holdInfo.seatNumber, SeatStatus.SOLD_OUT.name)
@@ -96,8 +88,8 @@ class TicketService(
             PaymentCompletedEvent(request.concertId, scheduleId, userId)
         )
 
-        return tickets.indices.map { i ->
-            PaymentTicketResponse.from(scheduleSeats[i], schedule, tickets[i])
+        return scheduleSeats.zip(tickets).map { (seat, ticket) ->
+            PaymentTicketResponse.from(seat, schedule, ticket)
         }
     }
 
@@ -113,10 +105,8 @@ class TicketService(
         ticket.updateIsValid(false)
         ticket.scheduleSeat.updateSeatStatus(SeatStatus.AVAILABLE)
 
-        val concertId = ticket.schedule.concert.concertId
-            ?: throw IllegalStateException("Concert ID is null")
-        val scheduleId = ticket.schedule.scheduleId
-            ?: throw IllegalStateException("Schedule ID is null")
+        val concertId = checkNotNull(ticket.schedule.concert.concertId) { "Concert ID is null" }
+        val scheduleId = checkNotNull(ticket.schedule.scheduleId) { "Schedule ID is null" }
         val seatNumber = ticket.scheduleSeat.seatNumber
 
         val redisKey = SeatOccupyManager.generateSeatOccupyKey(concertId, scheduleId, seatNumber)
@@ -129,11 +119,10 @@ class TicketService(
         eventPublisher.publishEvent(TicketCancelledEvent(concertId, scheduleId, userId))
     }
 
-    fun verifyTicket(qrToken: String): TicketVerifyResponse {
-        val ticket = ticketRepository.findByQrTokenWithDetails(qrToken)
+    fun verifyTicket(qrToken: String): TicketVerifyResponse =
+        ticketRepository.findByQrTokenWithDetails(qrToken)
+            ?.let { TicketVerifyResponse.from(it) }
             ?: throw ServiceException(ErrorCode.TICKET_NOT_FOUND)
-        return TicketVerifyResponse.from(ticket)
-    }
 
     fun createTicketNumber(): String = UUID.randomUUID().toString()
 

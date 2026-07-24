@@ -8,8 +8,7 @@ data class SeatOccupyResponse(
     val seatStatus: SeatStatus = SeatStatus.HOLD
 ) {
     companion object {
-        fun of(occupyToken: String, expireInSeconds: Long): SeatOccupyResponse {
-            return SeatOccupyResponse(occupyToken, expireInSeconds, SeatStatus.HOLD)
-        }
+        fun of(occupyToken: String, expireInSeconds: Long): SeatOccupyResponse =
+            SeatOccupyResponse(occupyToken, expireInSeconds, SeatStatus.HOLD)
     }
 }

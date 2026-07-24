@@ -38,10 +38,7 @@ class UserService(
 
     @Transactional
     fun signup(request: SignupRequest): SignupResponse {
-        val id = request.id
-        val email = request.email
-        val password = request.password
-        val name = request.name
+        val (id, email, password, name) = request
 
         if (userRepository.existsByLoginIdAndDeletedAtIsNull(id)) {
             throw ServiceException(ErrorCode.USER_ID_ALREADY_EXISTS)
@@ -49,6 +46,7 @@ class UserService(
         if (userRepository.existsByEmailAndDeletedAtIsNull(email)) {
             throw ServiceException(ErrorCode.USER_EMAIL_ALREADY_EXISTS)
         }
+
         val encodedPassword = requireNotNull(passwordEncoder.encode(password)) { "Password encoding failed" }
         val user = userRepository.save(
             User.create(
@@ -79,10 +77,8 @@ class UserService(
             ticket.updateIsValid(false)
             ticket.scheduleSeat.updateSeatStatus(SeatStatus.AVAILABLE)
 
-            val concertId = ticket.schedule.concert.concertId
-                ?: throw IllegalStateException("Concert ID is null")
-            val scheduleId = ticket.schedule.scheduleId
-                ?: throw IllegalStateException("Schedule ID is null")
+            val concertId = checkNotNull(ticket.schedule.concert.concertId) { "Concert ID is null" }
+            val scheduleId = checkNotNull(ticket.schedule.scheduleId) { "Schedule ID is null" }
 
             eventPublisher.publishEvent(
                 TicketCancelledEvent(
@@ -116,8 +112,7 @@ class UserService(
         val user = userRepository.findByUserIdAndDeletedAtIsNull(userId)
             ?: throw ServiceException(ErrorCode.USER_NOT_FOUND)
 
-        val name = request.name
-        if (name != null) {
+        request.name?.let { name ->
             val trimmed = name.trim()
             if (trimmed.isEmpty() || trimmed.contains(" ")) {
                 throw ServiceException(ErrorCode.USER_NAME_INVALID)
@@ -125,16 +120,14 @@ class UserService(
             user.updateName(trimmed)
         }
 
-        val email = request.email
-        if (email != null) {
+        request.email?.let { email ->
             if (user.email != email && userRepository.existsByEmailAndDeletedAtIsNull(email)) {
                 throw ServiceException(ErrorCode.USER_EMAIL_ALREADY_EXISTS)
             }
             user.updateEmail(email)
         }
 
-        val password = request.password
-        if (password != null) {
+        request.password?.let { password ->
             val encoded = requireNotNull(passwordEncoder.encode(password)) { "Password encoding failed" }
             user.updatePassword(encoded)
         }

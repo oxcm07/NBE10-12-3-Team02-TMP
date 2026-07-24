@@ -10,14 +10,12 @@ data class MyPageResponse(
     val ticketGroups: List<TicketGroupInfo>
 ) {
     companion object {
-        fun from(user: User, ticketGroups: List<TicketGroupInfo>): MyPageResponse {
-            return MyPageResponse(
-                name = user.name,
-                id = user.loginId,
-                email = user.email,
-                loginType = user.loginType.name,
-                ticketGroups = ticketGroups
-            )
-        }
+        fun from(user: User, ticketGroups: List<TicketGroupInfo>): MyPageResponse = MyPageResponse(
+            name = user.name,
+            id = user.loginId,
+            email = user.email,
+            loginType = user.loginType.name,
+            ticketGroups = ticketGroups
+        )
     }
 }

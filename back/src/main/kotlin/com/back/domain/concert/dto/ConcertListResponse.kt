@@ -13,18 +13,14 @@ data class ConcertListResponse(
     val status: String
 ) {
     companion object {
-        fun of(concert: Concert, venueName: String): ConcertListResponse {
-            val concertId = concert.concertId ?: throw IllegalArgumentException("Concert ID null")
-            val status = if (concert.endDate.isAfter(LocalDateTime.now())) "AVAILABLE" else "CLOSED"
-            return ConcertListResponse(
-                concertId = concertId,
-                concertName = concert.concertName,
-                venueName = venueName,
-                startDate = concert.startDate,
-                endDate = concert.endDate,
-                imageUrl = concert.urlPoster,
-                status = status
-            )
-        }
+        fun of(concert: Concert, venueName: String): ConcertListResponse = ConcertListResponse(
+            concertId = checkNotNull(concert.concertId) { "Concert ID null" },
+            concertName = concert.concertName,
+            venueName = venueName,
+            startDate = concert.startDate,
+            endDate = concert.endDate,
+            imageUrl = concert.urlPoster,
+            status = if (concert.endDate.isAfter(LocalDateTime.now())) "AVAILABLE" else "CLOSED"
+        )
     }
 }
