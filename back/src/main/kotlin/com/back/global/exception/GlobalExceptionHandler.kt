@@ -9,9 +9,6 @@ import org.springframework.web.bind.annotation.RestControllerAdvice
 class GlobalExceptionHandler {
 
     @ExceptionHandler(ServiceException::class)
-    fun handle(ex: ServiceException, response: HttpServletResponse): RsData<Void> {
-        val rsData = ex.rsData
-        response.status = rsData.statusCode
-        return rsData
-    }
+    fun handle(ex: ServiceException, response: HttpServletResponse): RsData<Void> =
+        ex.rsData.also { response.status = it.statusCode }
 }

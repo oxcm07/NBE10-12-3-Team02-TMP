@@ -4,7 +4,7 @@ import org.springframework.beans.factory.annotation.Value
 import org.springframework.stereotype.Component
 import java.nio.charset.StandardCharsets
 import java.security.SecureRandom
-import java.util.*
+import java.util.Base64
 import javax.crypto.Cipher
 import javax.crypto.spec.IvParameterSpec
 import javax.crypto.spec.SecretKeySpec
@@ -13,52 +13,30 @@ import javax.crypto.spec.SecretKeySpec
 class AesEncryptionUtil(
     @Value("\${custom.oauth.token.encryption-key}") encryptionKey: String
 ) {
-    private val secretKeySpec: SecretKeySpec
+    private val secretKeySpec: SecretKeySpec =
+        SecretKeySpec(Base64.getDecoder().decode(encryptionKey), "AES")
 
-    init {
-        val keyBytes = Base64.getDecoder().decode(encryptionKey)
-        this.secretKeySpec = SecretKeySpec(keyBytes, "AES")
-    }
-
-    fun encrypt(plainText: String): String {
-        try {
-            val iv = ByteArray(16)
-            SecureRandom().nextBytes(iv)
-            val ivSpec = IvParameterSpec(iv)
-
-            val cipher = Cipher.getInstance(ALGORITHM)
-            cipher.init(Cipher.ENCRYPT_MODE, secretKeySpec, ivSpec)
-
-            val encrypted = cipher.doFinal(plainText.toByteArray(StandardCharsets.UTF_8))
-            val combined = ByteArray(iv.size + encrypted.size)
-
-            System.arraycopy(iv, 0, combined, 0, iv.size)
-            System.arraycopy(encrypted, 0, combined, iv.size, encrypted.size)
-
-            return Base64.getEncoder().encodeToString(combined)
-        } catch (e: Exception) {
-            throw RuntimeException("암호화 실패", e)
+    fun encrypt(plainText: String): String = runCatching {
+        val iv = ByteArray(16).also { SecureRandom().nextBytes(it) }
+        val cipher = Cipher.getInstance(ALGORITHM).apply {
+            init(Cipher.ENCRYPT_MODE, secretKeySpec, IvParameterSpec(iv))
         }
-    }
 
-    fun decrypt(encryptedText: String): String {
-        try {
-            val combined = Base64.getDecoder().decode(encryptedText)
-            val iv = ByteArray(16)
-            val encrypted = ByteArray(combined.size - 16)
+        val encrypted = cipher.doFinal(plainText.toByteArray(StandardCharsets.UTF_8))
+        Base64.getEncoder().encodeToString(iv + encrypted)
+    }.getOrElse { throw RuntimeException("암호화 실패", it) }
 
-            System.arraycopy(combined, 0, iv, 0, 16)
-            System.arraycopy(combined, 16, encrypted, 0, encrypted.size)
+    fun decrypt(encryptedText: String): String = runCatching {
+        val combined = Base64.getDecoder().decode(encryptedText)
+        val iv = combined.copyOfRange(0, 16)
+        val encrypted = combined.copyOfRange(16, combined.size)
 
-            val ivSpec = IvParameterSpec(iv)
-            val cipher = Cipher.getInstance(ALGORITHM)
-            cipher.init(Cipher.DECRYPT_MODE, secretKeySpec, ivSpec)
-
-            return String(cipher.doFinal(encrypted), StandardCharsets.UTF_8)
-        } catch (e: Exception) {
-            throw RuntimeException("복호화 실패", e)
+        val cipher = Cipher.getInstance(ALGORITHM).apply {
+            init(Cipher.DECRYPT_MODE, secretKeySpec, IvParameterSpec(iv))
         }
-    }
+
+        String(cipher.doFinal(encrypted), StandardCharsets.UTF_8)
+    }.getOrElse { throw RuntimeException("복호화 실패", it) }
 
     companion object {
         private const val ALGORITHM = "AES/CBC/PKCS5Padding"

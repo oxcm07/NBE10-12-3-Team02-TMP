@@ -34,22 +34,15 @@ object SeatGenerator {
     private const val SEATS_PER_ROW = 30
 
     @JvmStatic
-    fun generate(schedule: Schedule): List<ScheduleSeat> {
-        val seats = mutableListOf<ScheduleSeat>()
-        for (grade in GRADES) {
-            for (num in 1..SEATS_PER_ROW) {
-                val seatNumber = "${grade.rowLabel}-$num"
-                seats.add(
-                    ScheduleSeat.create(
-                        schedule = schedule,
-                        gradeName = grade.gradeName,
-                        seatNumber = seatNumber,
-                        seatPrice = grade.price,
-                        seatStatus = SeatStatus.AVAILABLE
-                    )
-                )
-            }
+    fun generate(schedule: Schedule): List<ScheduleSeat> = GRADES.flatMap { grade ->
+        (1..SEATS_PER_ROW).map { num ->
+            ScheduleSeat.create(
+                schedule = schedule,
+                gradeName = grade.gradeName,
+                seatNumber = "${grade.rowLabel}-$num",
+                seatPrice = grade.price,
+                seatStatus = SeatStatus.AVAILABLE
+            )
         }
-        return seats
     }
 }
