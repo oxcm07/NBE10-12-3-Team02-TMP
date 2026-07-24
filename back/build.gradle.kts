@@ -21,39 +21,55 @@ repositories {
 }
 
 dependencies {
-    implementation("org.springframework.security:spring-security-crypto")
-    implementation("org.springframework.boot:spring-boot-h2console")
-    implementation("org.springframework.boot:spring-boot-starter-data-jpa")
-    implementation("org.springframework.boot:spring-boot-starter-validation")
+    // Spring Boot Core & Web
     implementation("org.springframework.boot:spring-boot-starter-webmvc")
-    implementation("org.springdoc:springdoc-openapi-starter-webmvc-ui:3.0.2")
-    implementation("com.bucket4j:bucket4j_jdk17-core:8.14.0") // bucket4j
-    implementation("com.github.ben-manes.caffeine:caffeine") // caffeine
+    implementation("org.springframework.boot:spring-boot-starter-validation")
+    implementation("org.springframework.boot:spring-boot-starter-data-jpa")
+    implementation("org.springframework.boot:spring-boot-h2console")
+    developmentOnly("org.springframework.boot:spring-boot-devtools")
+
+    // Kotlin & Jackson
     implementation("org.jetbrains.kotlin:kotlin-reflect")
     implementation("com.fasterxml.jackson.module:jackson-module-kotlin")
-    developmentOnly("org.springframework.boot:spring-boot-devtools")
-    runtimeOnly("com.h2database:h2")
-    runtimeOnly("com.mysql:mysql-connector-j")
-    testImplementation("org.springframework.boot:spring-boot-starter-data-jpa-test")
-    testImplementation("org.springframework.boot:spring-boot-starter-validation-test")
-    testImplementation("org.springframework.boot:spring-boot-starter-webmvc-test")
-    testRuntimeOnly("org.junit.platform:junit-platform-launcher")
-    // security
+
+    // Security & Crypto
     implementation("org.springframework.boot:spring-boot-starter-security")
-    testImplementation("org.springframework.boot:spring-boot-starter-security-test")
-    // JJWT
+    implementation("org.springframework.security:spring-security-crypto")
+
+    // OAuth2 Client
+    implementation("org.springframework.boot:spring-boot-starter-oauth2-client")
+
+    // JWT (JJWT)
     implementation("io.jsonwebtoken:jjwt-api:0.13.0")
     runtimeOnly("io.jsonwebtoken:jjwt-impl:0.13.0")
     runtimeOnly("io.jsonwebtoken:jjwt-jackson:0.13.0")
-    // Redisson (Sentinel, Delayed Queue, RScript 통합 클라이언트) - Spring Boot 4.0 호환 버전
+
+    // Redisson & Redis
     implementation("org.redisson:redisson-spring-boot-starter:4.6.1")
-    // OAuth2
-    implementation("org.springframework.boot:spring-boot-starter-oauth2-client")
-    testImplementation("org.springframework.boot:spring-boot-starter-test")
-    testImplementation("com.github.codemonstur:embedded-redis:1.4.3")
-    //WebSocket
+
+    // WebSocket
     implementation("org.springframework.boot:spring-boot-starter-websocket")
+
+    // Swagger (OpenAPI)
+    implementation("org.springdoc:springdoc-openapi-starter-webmvc-ui:3.0.2")
+
+    // Rate Limiting & Cache
+    implementation("com.bucket4j:bucket4j_jdk17-core:8.14.0")
+    implementation("com.github.ben-manes.caffeine:caffeine")
+
+    // Database Drivers
+    runtimeOnly("com.h2database:h2")
+    runtimeOnly("com.mysql:mysql-connector-j")
+
+    // Testing
+    testImplementation("org.springframework.boot:spring-boot-starter-test")
+    testImplementation("org.springframework.boot:spring-boot-starter-data-jpa-test")
+    testImplementation("org.springframework.boot:spring-boot-starter-validation-test")
+    testImplementation("org.springframework.boot:spring-boot-starter-webmvc-test")
+    testImplementation("org.springframework.boot:spring-boot-starter-security-test")
     testImplementation("org.springframework.boot:spring-boot-starter-websocket-test")
+    testImplementation("com.github.codemonstur:embedded-redis:1.4.3")
+    testRuntimeOnly("org.junit.platform:junit-platform-launcher")
 }
 
 kotlin {
