@@ -203,7 +203,8 @@ class TicketControllerTest @Autowired constructor(
     @Test
     @DisplayName("티켓 취소 성공")
     fun cancelTicket() {
-        seat.updateSeatStatus(SOLD_OUT)
+        seat.occupyHold()
+        seat.sell()
         val ticket = ticketRepository.save(Ticket.create(userEntity, schedule, seat, "ticket-number", seat.seatPrice))
 
         mockMvc.perform(

@@ -1,5 +1,7 @@
 package com.back.domain.user.entity
 
+import com.back.global.exception.ErrorCode
+import com.back.global.exception.ServiceException
 import com.back.global.jpa.converter.EncryptedStringConverter
 import com.back.global.jpa.entity.BaseEntity
 import jakarta.persistence.*
@@ -9,26 +11,38 @@ import java.util.UUID
 @Entity
 @Table(name = "users")
 class User(
-    @Column(name = "id", nullable = false, unique = true)
-    var loginId: String,
-
-    @Column(nullable = false, unique = true)
-    var email: String,
-
-    @Column(nullable = false)
-    var password: String,
-
-    @Column(nullable = false)
-    var name: String,
+    loginId: String,
+    email: String,
+    password: String,
+    name: String,
 
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
     val loginType: LoginType,
 
+    oauthRefreshToken: String? = null
+) : BaseEntity() {
+
+    @Column(name = "id", nullable = false, unique = true)
+    var loginId: String = loginId
+        protected set
+
+    @Column(nullable = false, unique = true)
+    var email: String = email
+        protected set
+
+    @Column(nullable = false)
+    var password: String = password
+        protected set
+
+    @Column(nullable = false)
+    var name: String = name
+        protected set
+
     @Column(columnDefinition = "TEXT")
     @Convert(converter = EncryptedStringConverter::class)
-    var oauthRefreshToken: String? = null
-) : BaseEntity() {
+    var oauthRefreshToken: String? = oauthRefreshToken
+        protected set
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -53,7 +67,11 @@ class User(
     }
 
     fun updateName(name: String) {
-        this.name = name
+        val trimmed = name.trim()
+        if (trimmed.isEmpty() || trimmed.contains(" ")) {
+            throw ServiceException(ErrorCode.USER_NAME_INVALID)
+        }
+        this.name = trimmed
     }
 
     fun updateEmail(email: String) {
@@ -71,16 +89,14 @@ class User(
             password: String,
             name: String,
             loginType: LoginType
-        ): User {
-            return User(
-                loginId = loginId,
-                email = email,
-                password = password,
-                name = name,
-                loginType = loginType,
-                oauthRefreshToken = null
-            )
-        }
+        ): User = User(
+            loginId = loginId,
+            email = email,
+            password = password,
+            name = name,
+            loginType = loginType,
+            oauthRefreshToken = null
+        )
 
         fun createOAuth(
             loginId: String,
@@ -89,15 +105,13 @@ class User(
             name: String,
             loginType: LoginType,
             oauthRefreshToken: String?
-        ): User {
-            return User(
-                loginId = loginId,
-                email = email,
-                password = password,
-                name = name,
-                loginType = loginType,
-                oauthRefreshToken = oauthRefreshToken
-            )
-        }
+        ): User = User(
+            loginId = loginId,
+            email = email,
+            password = password,
+            name = name,
+            loginType = loginType,
+            oauthRefreshToken = oauthRefreshToken
+        )
     }
 }

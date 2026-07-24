@@ -71,7 +71,7 @@ class ConcertService(
         val scheduleId = checkNotNull(schedule.scheduleId) { "Schedule ID null" }
         val scheduleSeats = scheduleSeatRepository.findByScheduleScheduleId(scheduleId)
         val prices = convertToPriceMap(scheduleSeats)
-        val bookable = concert.endDate.isAfter(LocalDateTime.now())
+        val bookable = concert.isBookable()
 
         return ConcertDetailResponse.of(
             concert = concert,
@@ -111,7 +111,7 @@ class ConcertService(
         val schedule = scheduleRepository.findByIdOrNull(scheduleId)
             ?: throw ServiceException(ErrorCode.CONCERT_SCHEDULE_EMPTY)
 
-        if (LocalDateTime.now().isAfter(schedule.scheduleDate)) {
+        if (schedule.isExpired()) {
             throw ServiceException(ErrorCode.EXPIRED_BOOKING_DEADLINE)
         }
     }

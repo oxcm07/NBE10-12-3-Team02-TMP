@@ -26,10 +26,10 @@ class SeatHoldExpiredProcessor(
         val seat = scheduleSeatRepository.findWithLockByScheduleIdAndSeatNumber(scheduleId, seatNumber)
 
         if (seat != null) {
-            if (seat.seatStatus == SeatStatus.HOLD) {
-                seat.updateSeatStatus(SeatStatus.AVAILABLE)
+            val wasHold = seat.seatStatus == SeatStatus.HOLD
+            seat.releaseToAvailable()
+            if (wasHold) {
                 log.info("좌석 복구 완료 (HOLD → AVAILABLE): scheduleId={}, seat={}", scheduleId, seatNumber)
-
                 eventPublisher.publishEvent(SeatExpiredEvent(concertId, scheduleId, seatNumber))
             } else {
                 log.debug("좌석이 HOLD 상태가 아님 (이미 처리됨): scheduleId={}, seat={}, status={}",

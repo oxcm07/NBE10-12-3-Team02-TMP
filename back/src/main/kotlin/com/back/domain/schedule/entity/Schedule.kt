@@ -43,6 +43,8 @@ open class Schedule protected constructor() : BaseEntity() {
         this.round = round
     }
 
+    fun isExpired(): Boolean = LocalDateTime.now().isAfter(scheduleDate)
+
     companion object {
         @JvmStatic
         fun create(concert: Concert, venue: Venue, scheduleDate: LocalDateTime, round: Int): Schedule =

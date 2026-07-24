@@ -56,20 +56,14 @@ class TicketService(
         val sortedSeatHolds = request.seatHolds.sortedBy { it.seatNumber }
 
         val scheduleSeats = sortedSeatHolds.map { holdInfo ->
-            val scheduleSeat = scheduleSeatRepository
+            scheduleSeatRepository
                 .findWithLockByScheduleIdAndSeatNumber(scheduleId, holdInfo.seatNumber)
                 ?: throw ServiceException(ErrorCode.SEAT_NOT_FOUND)
-
-            when (scheduleSeat.seatStatus) {
-                SeatStatus.SOLD_OUT -> throw ServiceException(ErrorCode.SEAT_ALREADY_SOLD)
-                SeatStatus.HOLD -> scheduleSeat
-                else -> throw ServiceException(ErrorCode.SEAT_HOLD_EXPIRED)
-            }
         }
 
         validateSeatHold(userId, request.concertId, scheduleId, sortedSeatHolds)
 
-        scheduleSeats.forEach { it.updateSeatStatus(SeatStatus.SOLD_OUT) }
+        scheduleSeats.forEach { it.sell() }
 
         for (holdInfo in sortedSeatHolds) {
             val redisKey = SeatOccupyManager.generateSeatOccupyKey(request.concertId, scheduleId, holdInfo.seatNumber)
@@ -98,12 +92,8 @@ class TicketService(
         val ticket = ticketRepository.findByTicketIdAndUser_UserId(ticketId, userId)
             ?: throw ServiceException(ErrorCode.TICKET_NOT_FOUND_FOR_USER)
 
-        if (!ticket.isValid) {
-            throw ServiceException(ErrorCode.TICKET_ALREADY_CANCELLED)
-        }
-
-        ticket.updateIsValid(false)
-        ticket.scheduleSeat.updateSeatStatus(SeatStatus.AVAILABLE)
+        ticket.cancel()
+        ticket.scheduleSeat.releaseToAvailable()
 
         val concertId = checkNotNull(ticket.schedule.concert.concertId) { "Concert ID is null" }
         val scheduleId = checkNotNull(ticket.schedule.scheduleId) { "Schedule ID is null" }

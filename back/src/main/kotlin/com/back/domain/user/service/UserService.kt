@@ -74,8 +74,8 @@ class UserService(
             .filter { it.isValid }
 
         for (ticket in activeTickets) {
-            ticket.updateIsValid(false)
-            ticket.scheduleSeat.updateSeatStatus(SeatStatus.AVAILABLE)
+            ticket.cancel()
+            ticket.scheduleSeat.releaseToAvailable()
 
             val concertId = checkNotNull(ticket.schedule.concert.concertId) { "Concert ID is null" }
             val scheduleId = checkNotNull(ticket.schedule.scheduleId) { "Schedule ID is null" }
@@ -112,13 +112,7 @@ class UserService(
         val user = userRepository.findByUserIdAndDeletedAtIsNull(userId)
             ?: throw ServiceException(ErrorCode.USER_NOT_FOUND)
 
-        request.name?.let { name ->
-            val trimmed = name.trim()
-            if (trimmed.isEmpty() || trimmed.contains(" ")) {
-                throw ServiceException(ErrorCode.USER_NAME_INVALID)
-            }
-            user.updateName(trimmed)
-        }
+        request.name?.let { user.updateName(it) }
 
         request.email?.let { email ->
             if (user.email != email && userRepository.existsByEmailAndDeletedAtIsNull(email)) {

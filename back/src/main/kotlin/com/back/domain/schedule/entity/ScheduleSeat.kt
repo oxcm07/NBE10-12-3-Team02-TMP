@@ -1,5 +1,7 @@
 package com.back.domain.schedule.entity
 
+import com.back.global.exception.ErrorCode
+import com.back.global.exception.ServiceException
 import com.back.global.jpa.entity.BaseEntity
 import jakarta.persistence.*
 
@@ -46,8 +48,27 @@ class ScheduleSeat protected constructor() : BaseEntity() {
         this.seatStatus = seatStatus
     }
 
-    fun updateSeatStatus(seatStatus: SeatStatus) {
-        this.seatStatus = seatStatus
+    fun occupyHold() {
+        if (seatStatus == SeatStatus.SOLD_OUT) {
+            throw ServiceException(ErrorCode.SEAT_ALREADY_SOLD)
+        }
+        if (seatStatus != SeatStatus.HOLD) {
+            this.seatStatus = SeatStatus.HOLD
+        }
+    }
+
+    fun sell() {
+        when (seatStatus) {
+            SeatStatus.SOLD_OUT -> throw ServiceException(ErrorCode.SEAT_ALREADY_SOLD)
+            SeatStatus.HOLD -> this.seatStatus = SeatStatus.SOLD_OUT
+            else -> throw ServiceException(ErrorCode.SEAT_HOLD_EXPIRED)
+        }
+    }
+
+    fun releaseToAvailable() {
+        if (seatStatus == SeatStatus.HOLD || seatStatus == SeatStatus.SOLD_OUT) {
+            this.seatStatus = SeatStatus.AVAILABLE
+        }
     }
 
     companion object {

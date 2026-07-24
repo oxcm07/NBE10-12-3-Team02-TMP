@@ -3,6 +3,8 @@ package com.back.domain.ticket.entity
 import com.back.domain.schedule.entity.Schedule
 import com.back.domain.schedule.entity.ScheduleSeat
 import com.back.domain.user.entity.User
+import com.back.global.exception.ErrorCode
+import com.back.global.exception.ServiceException
 import com.back.global.jpa.entity.BaseEntity
 import jakarta.persistence.*
 import java.util.UUID
@@ -11,35 +13,41 @@ import java.util.UUID
 class Ticket(
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "user_id", nullable = false)
-    var user: User,
+    val user: User,
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "schedule_id", nullable = false)
-    var schedule: Schedule,
+    val schedule: Schedule,
 
     @OneToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "schedule_seat_id", nullable = false)
-    var scheduleSeat: ScheduleSeat,
+    val scheduleSeat: ScheduleSeat,
 
     @Column(nullable = false, unique = true)
-    var ticketNumber: String,
+    val ticketNumber: String,
 
     @Column(unique = true)
-    var qrToken: String? = null,
+    val qrToken: String? = null,
 
     @Column(nullable = false)
-    var ticketPrice: Int = 0,
+    val ticketPrice: Int = 0,
 
-    @Column(nullable = false)
-    var isValid: Boolean = true
+    isValid: Boolean = true
 ) : BaseEntity() {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     val ticketId: Long? = null
 
-    fun updateIsValid(isValid: Boolean) {
-        this.isValid = isValid
+    @Column(nullable = false)
+    var isValid: Boolean = isValid
+        protected set
+
+    fun cancel() {
+        if (!isValid) {
+            throw ServiceException(ErrorCode.TICKET_ALREADY_CANCELLED)
+        }
+        this.isValid = false
     }
 
     companion object {
@@ -49,16 +57,14 @@ class Ticket(
             scheduleSeat: ScheduleSeat,
             ticketNumber: String,
             ticketPrice: Int
-        ): Ticket {
-            return Ticket(
-                user = user,
-                schedule = schedule,
-                scheduleSeat = scheduleSeat,
-                ticketNumber = ticketNumber,
-                qrToken = UUID.randomUUID().toString(),
-                ticketPrice = ticketPrice,
-                isValid = true
-            )
-        }
+        ): Ticket = Ticket(
+            user = user,
+            schedule = schedule,
+            scheduleSeat = scheduleSeat,
+            ticketNumber = ticketNumber,
+            qrToken = UUID.randomUUID().toString(),
+            ticketPrice = ticketPrice,
+            isValid = true
+        )
     }
 }
