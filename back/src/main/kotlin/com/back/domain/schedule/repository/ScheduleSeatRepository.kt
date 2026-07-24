@@ -7,7 +7,6 @@ import org.springframework.data.jpa.repository.JpaRepository
 import org.springframework.data.jpa.repository.Lock
 import org.springframework.data.jpa.repository.Query
 import org.springframework.data.repository.query.Param
-import java.util.Optional
 
 interface ScheduleSeatRepository : JpaRepository<ScheduleSeat, Long> {
 
@@ -23,7 +22,7 @@ interface ScheduleSeatRepository : JpaRepository<ScheduleSeat, Long> {
     fun findWithLockByScheduleIdAndSeatNumber(
         @Param("scheduleId") scheduleId: Long,
         @Param("seatNumber") seatNumber: String
-    ): Optional<ScheduleSeat>
+    ): ScheduleSeat?
 
     fun countBySchedule_ScheduleIdAndSeatStatus(scheduleId: Long, seatStatus: SeatStatus): Long
 

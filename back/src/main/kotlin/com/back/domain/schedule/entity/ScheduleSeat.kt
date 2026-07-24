@@ -1,5 +1,7 @@
 package com.back.domain.schedule.entity
 
+import com.back.global.exception.ErrorCode
+import com.back.global.exception.ServiceException
 import com.back.global.jpa.entity.BaseEntity
 import jakarta.persistence.*
 
@@ -8,30 +10,29 @@ class ScheduleSeat protected constructor() : BaseEntity() {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
-    var concertSeatPriceId: Long? = null
-        private set
+    val concertSeatPriceId: Long? = null
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "schedule_id", nullable = false)
     lateinit var schedule: Schedule
-        private set
+        protected set
 
     @Column(nullable = false)
     lateinit var gradeName: String
-        private set
+        protected set
 
     @Column(nullable = false)
     lateinit var seatNumber: String
-        private set
+        protected set
 
     @Column(nullable = false)
     var seatPrice: Int = 0
-        private set
+        protected set
 
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
     lateinit var seatStatus: SeatStatus
-        private set
+        protected set
 
     private constructor(
         schedule: Schedule,
@@ -47,8 +48,27 @@ class ScheduleSeat protected constructor() : BaseEntity() {
         this.seatStatus = seatStatus
     }
 
-    fun updateSeatStatus(seatStatus: SeatStatus) {
-        this.seatStatus = seatStatus
+    fun occupyHold() {
+        if (seatStatus == SeatStatus.SOLD_OUT) {
+            throw ServiceException(ErrorCode.SEAT_ALREADY_SOLD)
+        }
+        if (seatStatus != SeatStatus.HOLD) {
+            this.seatStatus = SeatStatus.HOLD
+        }
+    }
+
+    fun sell() {
+        when (seatStatus) {
+            SeatStatus.SOLD_OUT -> throw ServiceException(ErrorCode.SEAT_ALREADY_SOLD)
+            SeatStatus.HOLD -> this.seatStatus = SeatStatus.SOLD_OUT
+            else -> throw ServiceException(ErrorCode.SEAT_HOLD_EXPIRED)
+        }
+    }
+
+    fun releaseToAvailable() {
+        if (seatStatus == SeatStatus.HOLD || seatStatus == SeatStatus.SOLD_OUT) {
+            this.seatStatus = SeatStatus.AVAILABLE
+        }
     }
 
     companion object {
