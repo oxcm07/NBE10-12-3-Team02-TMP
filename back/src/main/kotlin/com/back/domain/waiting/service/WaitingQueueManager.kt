@@ -48,16 +48,15 @@ class WaitingQueueManager(
         return rank
     }
 
-    fun showWaitingRank(scheduleId: Long, userId: Long): Long {
-        val waitSet = redissonClient.getScoredSortedSet<String>(generateWaitKey(scheduleId))
-        val rank = waitSet.rank(userId.toString()) ?: throw ServiceException(ErrorCode.WAITING_QUEUE_NOT_FOUND)
-        return rank + 1L
-    }
+    fun showWaitingRank(scheduleId: Long, userId: Long): Long =
+        redissonClient.getScoredSortedSet<String>(generateWaitKey(scheduleId))
+            .rank(userId.toString())
+            ?.let { it + 1L }
+            ?: throw ServiceException(ErrorCode.WAITING_QUEUE_NOT_FOUND)
 
-    fun cancelWaiting(scheduleId: Long, userId: Long): Boolean {
-        val waitSet = redissonClient.getScoredSortedSet<String>(generateWaitKey(scheduleId))
-        return waitSet.remove(userId.toString())
-    }
+    fun cancelWaiting(scheduleId: Long, userId: Long): Boolean =
+        redissonClient.getScoredSortedSet<String>(generateWaitKey(scheduleId))
+            .remove(userId.toString())
 
     fun cancelActiveUser(scheduleId: Long, userId: Long): Boolean {
         val activeSet = redissonClient.getScoredSortedSet<String>(generateQueueActiveKey(scheduleId))

@@ -40,8 +40,7 @@ class WaitingQueueService(
             throw ServiceException(ErrorCode.CONCERT_SOLD_OUT)
         }
 
-        val activeToken = waitingQueueManager.getActiveToken(scheduleId, userId)
-        if (activeToken != null) {
+        waitingQueueManager.getActiveToken(scheduleId, userId)?.let { activeToken ->
             return WaitingQueueResponse.of(concertId, scheduleId, userId, 0L, 0L, activeToken)
         }
 
@@ -64,8 +63,7 @@ class WaitingQueueService(
         validateUser(userId)
         concertService.validateConcertScheduleMatch(concertId, scheduleId)
 
-        val activeToken = waitingQueueManager.getActiveToken(scheduleId, userId)
-        if (activeToken != null) {
+        waitingQueueManager.getActiveToken(scheduleId, userId)?.let { activeToken ->
             return WaitingQueueResponse.of(concertId, scheduleId, userId, 0L, 0L, activeToken)
         }
 
@@ -118,7 +116,7 @@ class WaitingQueueService(
             return
         }
 
-        val capacity = Math.min(remainingSeats, maxActiveUsers.toLong())
+        val capacity = minOf(remainingSeats, maxActiveUsers.toLong())
         val userIds = waitingQueueManager.addActiveUser(scheduleId, capacity, batchSize, entryTokenTtl)
 
         for (userId in userIds) {

@@ -7,37 +7,18 @@ import org.springframework.stereotype.Component
 @Component
 class BearerTokenExtractor {
 
-    fun extract(authorization: String): String {
-        if (!authorization.startsWith(BEARER_PREFIX)) {
-            throw ServiceException(ErrorCode.AUTH_INVALID_BEARER_HEADER)
-        }
+    fun extract(authorization: String): String =
+        authorization.takeIf { it.startsWith(BEARER_PREFIX) }
+            ?.removePrefix(BEARER_PREFIX)
+            ?.trim()
+            ?.takeIf { it.isNotBlank() }
+            ?: throw ServiceException(ErrorCode.AUTH_INVALID_BEARER_HEADER)
 
-        val accessToken = authorization.substring(BEARER_PREFIX.length).trim()
-
-        if (accessToken.isBlank()) {
-            throw ServiceException(ErrorCode.AUTH_INVALID_BEARER_HEADER)
-        }
-
-        return accessToken
-    }
-
-    fun extractAccessTokenOrNull(authorization: String?): String? {
-        if (authorization.isNullOrBlank()) {
-            return null
-        }
-
-        if (!authorization.startsWith("Bearer ")) {
-            return null
-        }
-
-        val accessToken = authorization.substring("Bearer ".length).trim()
-
-        if (accessToken.isBlank()) {
-            return null
-        }
-
-        return accessToken
-    }
+    fun extractAccessTokenOrNull(authorization: String?): String? =
+        authorization?.takeIf { it.startsWith(BEARER_PREFIX) }
+            ?.removePrefix(BEARER_PREFIX)
+            ?.trim()
+            ?.takeIf { it.isNotBlank() }
 
     companion object {
         private const val BEARER_PREFIX = "Bearer "
