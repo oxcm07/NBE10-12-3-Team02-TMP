@@ -10,21 +10,21 @@ class CustomAuthenticationFilterSkipMatcher {
         val path = request.servletPath
         val method = request.method
 
-        return "OPTIONS" == method
-            || path.startsWith("/oauth2/")
-            || path.startsWith("/login/oauth2/")
-            || ("GET" == method && (
-            path.matches(Regex("/api/[^/]+/concerts"))
-                || path.matches(Regex("/api/[^/]+/concerts/\\d+"))
-                || path.matches(Regex("/api/[^/]+/schedules/.*"))
-                || path.matches(Regex("/api/[^/]+/users/check-id"))
-            ))
-            || ("POST" == method && (
-            path.matches(Regex("/api/[^/]+/auth/login"))
-                || path.matches(Regex("/api/[^/]+/auth/refresh"))
-                || path.matches(Regex("/api/[^/]+/auth/logout"))
-                || path.matches(Regex("/api/[^/]+/users/signup"))
-                || path.matches(Regex("/api/[^/]+/auth/restore"))
-            ))
+        return method == "OPTIONS" ||
+                path.startsWith("/oauth2/") ||
+                path.startsWith("/login/oauth2/") ||
+                (method == "GET" && (
+                        path.matches(Regex("/api/[^/]+/concerts")) ||
+                                path.matches(Regex("/api/[^/]+/concerts/\\d+")) ||
+                                path.matches(Regex("/api/[^/]+/schedules/.*")) ||
+                                path.matches(Regex("/api/[^/]+/users/check-id"))
+                        )) ||
+                (method == "POST" && (
+                        path.matches(Regex("/api/[^/]+/auth/login")) ||
+                                path.matches(Regex("/api/[^/]+/auth/refresh")) ||
+                                path.matches(Regex("/api/[^/]+/auth/logout")) ||
+                                path.matches(Regex("/api/[^/]+/users/signup")) ||
+                                path.matches(Regex("/api/[^/]+/auth/restore"))
+                        ))
     }
 }

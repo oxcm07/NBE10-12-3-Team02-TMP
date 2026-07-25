@@ -13,12 +13,9 @@ import java.security.Principal
 
 @Component
 class WebSocketAuthInterceptor(
-    private val jwtTokenProvider: JwtTokenProvider
+    private val jwtTokenProvider: JwtTokenProvider,
 ) : ChannelInterceptor {
-
-    private val log = LoggerFactory.getLogger(javaClass)
-
-    override fun preSend(message: Message<*>, channel: MessageChannel): Message<*>? {
+    override fun preSend(message: Message<*>, channel: MessageChannel): Message<*> {
         val accessor = MessageHeaderAccessor.getAccessor(message, StompHeaderAccessor::class.java)
 
         if (accessor != null && StompCommand.CONNECT == accessor.command) {
@@ -39,7 +36,13 @@ class WebSocketAuthInterceptor(
         return message
     }
 
-    data class StompPrincipal(private val nameStr: String) : Principal {
-        override fun getName(): String = nameStr
+    data class StompPrincipal(
+        private val principalName: String,
+    ) : Principal {
+        override fun getName(): String = principalName
+    }
+
+    companion object {
+        private val log = LoggerFactory.getLogger(WebSocketAuthInterceptor::class.java)
     }
 }

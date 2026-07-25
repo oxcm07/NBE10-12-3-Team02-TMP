@@ -7,7 +7,7 @@ import java.util.*
 
 object Ut {
     object jwt {
-        fun toString(secret: String, expireSeconds: Int, body: Map<String, Any>): String {
+        fun toString(secret: String, expireSeconds: Int, body: Map<String, Any?>): String {
             val issuedAt = Date()
             val expiration = Date(issuedAt.time + 1000L * expireSeconds)
             val secretKey = Keys.hmacShaKeyFor(secret.toByteArray())
@@ -39,7 +39,7 @@ object Ut {
     object json {
         val objectMapper: ObjectMapper = ObjectMapper()
 
-        fun toString(obj: Any?, defaultValue: String? = null): String? = try {
+        fun toString(obj: Any?, defaultValue: String): String = try {
             objectMapper.writeValueAsString(obj)
         } catch (e: Exception) {
             defaultValue
@@ -47,4 +47,3 @@ object Ut {
     }
 }
 
-fun Any?.toJson(defaultValue: String? = null): String? = Ut.json.toString(this, defaultValue)

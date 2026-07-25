@@ -47,3 +47,7 @@ src/main/resources/application-secret.yaml
 
 # SSL
 src/main/resources/local-ssl.p12
+
+# AI
+/docs
+AGENTS.md

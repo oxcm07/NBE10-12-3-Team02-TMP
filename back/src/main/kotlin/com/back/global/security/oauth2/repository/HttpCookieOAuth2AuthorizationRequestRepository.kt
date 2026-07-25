@@ -60,7 +60,8 @@ class HttpCookieOAuth2AuthorizationRequestRepository(
 
     private fun deserialize(value: String): OAuth2AuthorizationRequest {
         val bytes = Base64.getUrlDecoder().decode(value)
-        return SerializationUtils.deserialize(bytes) as OAuth2AuthorizationRequest
+        return SerializationUtils.deserialize(bytes) as? OAuth2AuthorizationRequest
+            ?: throw IllegalArgumentException("Invalid OAuth2 authorization request cookie")
     }
 
     companion object {
