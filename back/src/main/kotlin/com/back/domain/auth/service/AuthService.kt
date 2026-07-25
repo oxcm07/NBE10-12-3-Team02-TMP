@@ -64,7 +64,7 @@ class AuthService(
             requestRefreshTokenHash,
             newJti,
             newRefreshTokenHash,
-            Duration.ofSeconds(refreshTokenExpireSeconds.toLong())
+            refreshTokenTtl()
         )
 
         handleValidationFailure(rotateResult, payload.userId)
@@ -93,16 +93,15 @@ class AuthService(
     }
 
     private fun handleValidationFailure(validationResult: RefreshTokenValidationResult, userId: Long) {
-        if (validationResult == RefreshTokenValidationResult.SUCCESS) {
-            return
+        when (validationResult) {
+            RefreshTokenValidationResult.SUCCESS -> return
+            RefreshTokenValidationResult.MISMATCH -> {
+                refreshTokenRepository.deleteAllByUserId(userId)
+                throw ServiceException(ErrorCode.AUTH_REFRESH_TOKEN_MISMATCH)
+            }
+            RefreshTokenValidationResult.NOT_FOUND ->
+                throw ServiceException(ErrorCode.AUTH_INVALID_REFRESH_TOKEN)
         }
-
-        if (validationResult == RefreshTokenValidationResult.MISMATCH) {
-            refreshTokenRepository.deleteAllByUserId(userId)
-            throw ServiceException(ErrorCode.AUTH_REFRESH_TOKEN_MISMATCH)
-        }
-
-        throw ServiceException(ErrorCode.AUTH_INVALID_REFRESH_TOKEN)
     }
 
     private fun deleteRefreshTokenIfValid(refreshToken: String?) {
@@ -119,11 +118,17 @@ class AuthService(
         try {
             val remaining = jwtTokenProvider.getRemainingSeconds(accessToken)
             if (remaining > 0) {
-                blacklistRepository.add(accessToken, Duration.ofSeconds(remaining + 60))
+                blacklistRepository.add(
+                    accessToken,
+                    Duration.ofSeconds(remaining + BLACKLIST_GRACE_SECONDS)
+                )
             }
         } catch (ignored: RuntimeException) {
         }
     }
+
+    private fun refreshTokenTtl(): Duration =
+        Duration.ofSeconds(refreshTokenExpireSeconds.toLong())
 
     fun issueTokens(user: User): TokenResponse {
         val userId = user.userId ?: throw IllegalArgumentException("User ID must not be null")
@@ -137,9 +142,13 @@ class AuthService(
             userId,
             refreshTokenJti,
             refreshTokenHash,
-            Duration.ofSeconds(refreshTokenExpireSeconds.toLong())
+            refreshTokenTtl()
         )
 
         return TokenResponse(accessToken, refreshToken)
+    }
+
+    companion object {
+        private const val BLACKLIST_GRACE_SECONDS = 60L
     }
 }

@@ -64,13 +64,13 @@ class RequestContext(
         setCookie(name, null, path)
     }
 
-    val clientIp: String
-        get() {
-            val forwardedFor = getHeader("X-Forwarded-For", "")
-            return if (forwardedFor.isNotBlank()) {
-                forwardedFor.split(",")[0].trim()
-            } else {
-                req().remoteAddr
-            }
+    fun getClientIp(): String {
+        val forwardedFor = getHeader("X-Forwarded-For", "")
+
+        if (forwardedFor.isNotBlank()) {
+            return forwardedFor.split(",")[0].trim()
         }
+
+        return req().remoteAddr
+    }
 }
