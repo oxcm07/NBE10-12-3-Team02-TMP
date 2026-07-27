@@ -26,7 +26,9 @@ spring.redis.redisson.config: |
       - "redis://${REDIS_SENTINEL_2:127.0.0.1:26380}"
       - "redis://${REDIS_SENTINEL_3:127.0.0.1:26381}"
     masterConnectionPoolSize: 16
+    masterConnectionMinimumIdleSize: 4
     slaveConnectionPoolSize: 16
+    slaveConnectionMinimumIdleSize: 4
     readMode: SLAVE
     subscriptionMode: MASTER
     password: ${REDIS_PASSWORD:}
