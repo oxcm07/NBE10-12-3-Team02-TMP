@@ -11,6 +11,8 @@ custom:
     same-site: Lax
 
 # Redisson Sentinel 설정 (로컬 Docker Compose)
+# natMapper: Sentinel이 클라이언트에게 알려주는 컨테이너 내부 호스트명/IP를
+#            로컬 PC에서 접근 가능한 127.0.0.1 포트로 변환
 spring.redis.redisson.config: |
   sentinelServersConfig:
     masterName: mymaster
