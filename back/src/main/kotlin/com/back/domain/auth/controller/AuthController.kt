@@ -22,7 +22,6 @@ class AuthController(
     private val requestContext: RequestContext,
     private val authService: AuthService
 ) {
-    private val log = LoggerFactory.getLogger(javaClass)
 
     @PostMapping("/login")
     @Operation(summary = "로그인", description = "로그인 API")
@@ -47,7 +46,7 @@ class AuthController(
         val refreshToken = requestContext.getCookieValue("refreshToken", "")
         authService.logout(refreshToken, authorization)
 
-        requestContext.deleteCookie("refreshToken", "/api/v1/auth")
+        requestContext.deleteCookie("refreshToken", AUTH_COOKIE_PATH)
 
         return RsData(
             "200-1",
@@ -66,7 +65,7 @@ class AuthController(
 
         val tokenResponse = authService.refresh(refreshToken)
 
-        requestContext.setCookie("refreshToken", tokenResponse.refreshToken, "/api/v1/auth")
+        requestContext.setCookie("refreshToken", tokenResponse.refreshToken, AUTH_COOKIE_PATH)
         requestContext.setHeader("Authorization", "Bearer ${tokenResponse.accessToken}")
 
         return RsData(
@@ -86,21 +85,30 @@ class AuthController(
 
             RsData("200-2", "로그인 상태가 복구되었습니다.", AuthRestoreResponse(true))
         } catch (e: ServiceException) {
-            if (e.errorCode == ErrorCode.AUTH_REFRESH_TOKEN_ROTATION_FAILED) {
-                throw e
-            }
+            handleRestoreFailure(e)
+        }
+    }
 
-            if (e.errorCode == ErrorCode.AUTH_REFRESH_TOKEN_MISMATCH) {
+    private fun handleRestoreFailure(e: ServiceException): RsData<AuthRestoreResponse> {
+        when (e.errorCode) {
+            ErrorCode.AUTH_REFRESH_TOKEN_ROTATION_FAILED -> throw e
+            ErrorCode.AUTH_REFRESH_TOKEN_MISMATCH -> {
                 log.warn(
                     "Refresh token mismatch detected during restore. clientIp={}, userAgent={}",
-                    requestContext.clientIp,
-                    requestContext.getHeader("User-Agent", "")
+                    requestContext.getClientIp(),
+                    requestContext.getHeader("User-Agent", ""),
                 )
                 throw e
             }
-
-            requestContext.deleteCookie("refreshToken", "/api/v1/auth")
-            RsData("200-1", "비로그인 상태입니다.", AuthRestoreResponse(false))
+            else -> {
+                requestContext.deleteCookie("refreshToken", AUTH_COOKIE_PATH)
+                return RsData("200-1", "비로그인 상태입니다.", AuthRestoreResponse(false))
+            }
         }
+    }
+
+    companion object {
+        private const val AUTH_COOKIE_PATH = "/api/v1/auth"
+        private val log = LoggerFactory.getLogger(AuthController::class.java)
     }
 }

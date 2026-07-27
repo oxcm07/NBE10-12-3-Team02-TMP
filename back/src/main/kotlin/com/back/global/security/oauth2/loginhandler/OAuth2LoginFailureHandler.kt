@@ -17,11 +17,10 @@ class OAuth2LoginFailureHandler(
         response: HttpServletResponse,
         exception: AuthenticationException
     ) {
-        val errorCode = if (exception is OAuth2AuthenticationException) {
-            exception.error.errorCode
-        } else {
-            "oauth2_login_failed"
-        }
+        val errorCode = (exception as? OAuth2AuthenticationException)
+            ?.error
+            ?.errorCode
+            ?: "oauth2_login_failed"
 
         redirectHandler.redirectFailure(response, errorCode)
     }

@@ -11,18 +11,12 @@ custom:
     same-site: Lax
 
 # Redisson Sentinel 설정 (로컬 Docker Compose)
-spring.redis.redisson.config: |
-  sentinelServersConfig:
-    masterName: mymaster
-    sentinelAddresses:
-      - "redis://127.0.0.1:26379"
-      - "redis://127.0.0.1:26380"
-      - "redis://127.0.0.1:26381"
-    masterConnectionPoolSize: 8
-    slaveConnectionPoolSize: 8
-    readMode: SLAVE
-    subscriptionMode: MASTER
-    database: 0
-  threads: 16
-  nettyThreads: 32
-  codec: !<org.redisson.codec.JsonJacksonCodec> {}
+  spring.redis.redisson.config: |
+    singleServerConfig:
+      address: "redis://127.0.0.1:6379"
+      connectionPoolSize: 8
+      connectionMinimumIdleSize: 2
+      database: 0
+    threads: 16
+    nettyThreads: 32
+    codec: !<org.redisson.codec.JsonJacksonCodec> {}

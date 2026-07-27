@@ -10,8 +10,8 @@ import org.springframework.stereotype.Component
 class SecurityAuthenticationFactory {
     fun create(payload: AccessTokenPayload): Authentication {
         val securityUser = SecurityUser(
-            id = payload.userId,
-            name = payload.name
+            payload.userId,
+            payload.name
         )
 
         return UsernamePasswordAuthenticationToken(

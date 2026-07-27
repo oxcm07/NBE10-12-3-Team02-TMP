@@ -1,10 +1,8 @@
 package com.back.global.security.jwt
 
-import org.springframework.data.redis.core.script.DefaultRedisScript
-
 object RefreshTokenLuaScripts {
-    val ROTATE: DefaultRedisScript<Long> = DefaultRedisScript(
-        """
+
+    const val ROTATE_SCRIPT = """
         local oldValue = redis.call('GET', KEYS[1])
         
         if not oldValue then
@@ -23,7 +21,8 @@ object RefreshTokenLuaScripts {
         redis.call('EXPIRE', KEYS[3], ARGV[3])
         
         return 1
-        """.trimIndent(),
-        Long::class.java
-    )
+    """
+
+    @JvmStatic
+    fun rotateScript(): String = ROTATE_SCRIPT.trimIndent()
 }

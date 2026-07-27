@@ -65,7 +65,6 @@ class CustomAuthenticationFilter(
         SecurityContextHolder.getContext().authentication = authentication
     }
 
-    override fun shouldNotFilter(request: HttpServletRequest): Boolean {
-        return skipMatcher.shouldSkip(request)
-    }
+    override fun shouldNotFilter(request: HttpServletRequest): Boolean =
+        skipMatcher.shouldSkip(request)
 }

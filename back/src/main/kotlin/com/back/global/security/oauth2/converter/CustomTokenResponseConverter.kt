@@ -6,28 +6,22 @@ import org.springframework.security.oauth2.core.endpoint.OAuth2AccessTokenRespon
 import org.springframework.security.oauth2.core.endpoint.OAuth2ParameterNames
 
 class CustomTokenResponseConverter : Converter<Map<String, Any>, OAuth2AccessTokenResponse> {
-
     override fun convert(tokenResponseParameters: Map<String, Any>): OAuth2AccessTokenResponse {
         val accessToken = tokenResponseParameters[OAuth2ParameterNames.ACCESS_TOKEN] as String
-        val tokenType = OAuth2AccessToken.TokenType.BEARER
+        val expiresIn = tokenResponseParameters[OAuth2ParameterNames.EXPIRES_IN]
+            ?.toString()
+            ?.toLong()
+            ?: 0L
+        val scopes = tokenResponseParameters[OAuth2ParameterNames.SCOPE]
+            ?.toString()
+            ?.split(" ")
+            ?.filter { it.isNotBlank() }
+            ?.toSet()
+            ?: emptySet()
 
-        var expiresIn = 0L
-        if (tokenResponseParameters.containsKey(OAuth2ParameterNames.EXPIRES_IN)) {
-            expiresIn = tokenResponseParameters[OAuth2ParameterNames.EXPIRES_IN].toString().toLong()
-        }
-
-        var scopes: Set<String> = emptySet()
-        if (tokenResponseParameters.containsKey(OAuth2ParameterNames.SCOPE)) {
-            val scope = tokenResponseParameters[OAuth2ParameterNames.SCOPE] as String
-            scopes = scope.split(" ").toSet()
-        }
-
-        val additionalParameters = LinkedHashMap<String, Any>()
-        tokenResponseParameters.forEach { (key, value) ->
-            if (!TOKEN_RESPONSE_PARAMETER_NAMES.contains(key)) {
-                additionalParameters[key] = value
-            }
-        }
+        val additionalParameters = tokenResponseParameters
+            .filterKeys { it !in TOKEN_RESPONSE_PARAMETER_NAMES }
+            .toMutableMap()
 
         val refreshTokenObj = tokenResponseParameters[OAuth2ParameterNames.REFRESH_TOKEN]
         if (refreshTokenObj != null) {
@@ -35,7 +29,7 @@ class CustomTokenResponseConverter : Converter<Map<String, Any>, OAuth2AccessTok
         }
 
         val builder = OAuth2AccessTokenResponse.withToken(accessToken)
-            .tokenType(tokenType)
+            .tokenType(OAuth2AccessToken.TokenType.BEARER)
             .expiresIn(expiresIn)
             .scopes(scopes)
             .additionalParameters(additionalParameters)
@@ -53,7 +47,7 @@ class CustomTokenResponseConverter : Converter<Map<String, Any>, OAuth2AccessTok
             OAuth2ParameterNames.TOKEN_TYPE,
             OAuth2ParameterNames.EXPIRES_IN,
             OAuth2ParameterNames.REFRESH_TOKEN,
-            OAuth2ParameterNames.SCOPE
+            OAuth2ParameterNames.SCOPE,
         )
     }
 }

@@ -5,6 +5,7 @@ import com.back.domain.user.entity.User
 import com.back.domain.user.repository.UserRepository
 import com.back.global.security.oauth2.info.GoogleOAuth2UserInfo
 import com.back.global.security.oauth2.info.KakaoOAuth2UserInfo
+import com.back.global.security.oauth2.info.NaverOAuth2UserInfo
 import com.back.global.security.oauth2.info.OAuth2UserInfo
 import org.slf4j.LoggerFactory
 import org.springframework.dao.DataIntegrityViolationException
@@ -25,21 +26,17 @@ class CustomOAuth2UserService(
     private val passwordEncoder: PasswordEncoder
 ) : DefaultOAuth2UserService() {
 
-    private val log = LoggerFactory.getLogger(javaClass)
-
     override fun loadUser(userRequest: OAuth2UserRequest): OAuth2User {
         val oAuth2User = super.loadUser(userRequest)
         val registrationId = userRequest.clientRegistration.registrationId
         val refreshToken = userRequest.additionalParameters.getOrDefault("refresh_token", "").toString()
-
-        log.info("OAuth2 additionalParameters: {}", userRequest.additionalParameters)
-        log.info("OAuth2 refreshToken: {}", refreshToken)
 
         @Suppress("UNCHECKED_CAST")
         val attributes = oAuth2User.attributes as Map<String, Any>
 
         val user = when (registrationId) {
             "kakao" -> getOrCreateUser(attributes, LoginType.KAKAO, refreshToken)
+            "naver" -> getOrCreateUser(oAuth2User.attributes, LoginType.NAVER, refreshToken)
             "google" -> getOrCreateUser(attributes, LoginType.GOOGLE, refreshToken)
             else -> throw OAuth2AuthenticationException("oauth2_provider_not_supported")
         }
@@ -58,13 +55,13 @@ class CustomOAuth2UserService(
         )
     }
 
-    private fun createUserInfo(attributes: Map<String, Any>, loginType: LoginType): OAuth2UserInfo {
-        return when (loginType) {
-            LoginType.KAKAO -> KakaoOAuth2UserInfo(attributes)
-            LoginType.GOOGLE -> GoogleOAuth2UserInfo(attributes)
+    private fun createUserInfo(attributes: Map<String, Any>, loginType: LoginType): OAuth2UserInfo =
+        when (loginType.name) {
+            "KAKAO" -> KakaoOAuth2UserInfo(attributes)
+            "NAVER" -> NaverOAuth2UserInfo(attributes)
+            "GOOGLE" -> GoogleOAuth2UserInfo(attributes)
             else -> throw OAuth2AuthenticationException("oauth2_provider_not_supported")
         }
-    }
 
     private fun getOrCreateUser(attributes: Map<String, Any>, loginType: LoginType, refreshToken: String): User {
         val userInfo = createUserInfo(attributes, loginType)
@@ -110,7 +107,7 @@ class CustomOAuth2UserService(
             password = randomPassword,
             name = name,
             loginType = loginType,
-            oauthRefreshToken = if (refreshToken.isBlank()) null else refreshToken
+            oauthRefreshToken = refreshToken.ifBlank { null }
         )
 
         return try {
@@ -124,5 +121,9 @@ class CustomOAuth2UserService(
         if (value.isNullOrBlank()) {
             throw OAuth2AuthenticationException(errorCode)
         }
+    }
+
+    companion object {
+        private val log = LoggerFactory.getLogger(CustomOAuth2UserService::class.java)
     }
 }
