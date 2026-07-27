@@ -25,7 +25,7 @@ services:
     ports:
       - "26379:26379"
     command: >
-      sh -c "printf 'port 26379\nsentinel monitor mymaster redis-master 6379 2\nsentinel down-after-milliseconds mymaster 5000\nsentinel failover-timeout mymaster 10000\nsentinel parallel-syncs mymaster 1\nsentinel resolve-hostnames yes\nsentinel announce-hostnames yes\n' > /tmp/sentinel.conf && redis-sentinel /tmp/sentinel.conf"
+      sh -c "printf 'port 26379\nsentinel monitor mymaster redis-master 6379 2\nsentinel down-after-milliseconds mymaster 5000\nsentinel failover-timeout mymaster 10000\nsentinel parallel-syncs mymaster 1\nsentinel resolve-hostnames yes\nsentinel announce-hostnames yes\nsentinel announce-ip 127.0.0.1\nsentinel announce-port 26379\n' > /tmp/sentinel.conf && redis-sentinel /tmp/sentinel.conf"
     depends_on:
       - redis-master
       - redis-slave
@@ -38,7 +38,7 @@ services:
     ports:
       - "26380:26379"
     command: >
-      sh -c "printf 'port 26379\nsentinel monitor mymaster redis-master 6379 2\nsentinel down-after-milliseconds mymaster 5000\nsentinel failover-timeout mymaster 10000\nsentinel parallel-syncs mymaster 1\nsentinel resolve-hostnames yes\nsentinel announce-hostnames yes\n' > /tmp/sentinel.conf && redis-sentinel /tmp/sentinel.conf"
+      sh -c "printf 'port 26379\nsentinel monitor mymaster redis-master 6379 2\nsentinel down-after-milliseconds mymaster 5000\nsentinel failover-timeout mymaster 10000\nsentinel parallel-syncs mymaster 1\nsentinel resolve-hostnames yes\nsentinel announce-hostnames yes\nsentinel announce-ip 127.0.0.1\nsentinel announce-port 26380\n' > /tmp/sentinel.conf && redis-sentinel /tmp/sentinel.conf"
     depends_on:
       - redis-master
       - redis-slave
@@ -51,7 +51,7 @@ services:
     ports:
       - "26381:26379"
     command: >
-      sh -c "printf 'port 26379\nsentinel monitor mymaster redis-master 6379 2\nsentinel down-after-milliseconds mymaster 5000\nsentinel failover-timeout mymaster 10000\nsentinel parallel-syncs mymaster 1\nsentinel resolve-hostnames yes\nsentinel announce-hostnames yes\n' > /tmp/sentinel.conf && redis-sentinel /tmp/sentinel.conf"
+      sh -c "printf 'port 26379\nsentinel monitor mymaster redis-master 6379 2\nsentinel down-after-milliseconds mymaster 5000\nsentinel failover-timeout mymaster 10000\nsentinel parallel-syncs mymaster 1\nsentinel resolve-hostnames yes\nsentinel announce-hostnames yes\nsentinel announce-ip 127.0.0.1\nsentinel announce-port 26381\n' > /tmp/sentinel.conf && redis-sentinel /tmp/sentinel.conf"
     depends_on:
       - redis-master
       - redis-slave
